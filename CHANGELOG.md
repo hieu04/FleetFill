@@ -25,6 +25,8 @@ not produced a public release yet.
 - Transient in-app progress surface without adding a permanent Running tab.
 - Eighteen safety/runner tests, bringing the desktop-side suite to 27 tests and
   the full offline suite to 73 tests.
+- MIT licensing for FleetFill's original source, package metadata, and a
+  third-party dependency notice with a Qt/LGPL packaging gate.
 
 ### Safety
 

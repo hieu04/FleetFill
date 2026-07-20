@@ -137,8 +137,9 @@ map translation, locator replay, and home/service navigation.
 ## 10. Third-party components
 
 The FleetFill UI automation logic and tests in this repository were developed
-for this project. Runtime image recognition currently relies on the open-source
-Python packages NumPy and Pillow.
+for this project and are released under the MIT License. Runtime image
+recognition relies on the open-source Python packages NumPy and Pillow, while
+the desktop shell uses PySide6/Qt for Python under its upstream license terms.
 
 Research utilities also used:
 
@@ -152,6 +153,12 @@ Downloaded tools, their source trees, game archives, generated evidence, and
 personal save data are excluded from Git. Their respective upstream licenses
 apply to those components; they are not vendored as part of FleetFill's source
 payload.
+
+`THIRD_PARTY_NOTICES.md` records the direct and optional dependency licenses.
+This source-level inventory is not by itself sufficient for a packaged Windows
+release. Before producing an installer, the build must inventory the exact
+PySide6/Qt and other binaries it includes, ship the applicable license texts and
+notices, and satisfy the Qt LGPLv3 requirements for the distributed libraries.
 
 ## 11. What remains
 

@@ -142,3 +142,10 @@ records follow, then packaging and a normal Windows installer.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.
+
+## License
+
+FleetFill's original source code is available under the [MIT License](LICENSE).
+Its dependencies remain under their respective licenses; see
+[Third-party notices](THIRD_PARTY_NOTICES.md). A future packaged Windows release
+must also include and comply with the applicable PySide6/Qt LGPLv3 materials.
