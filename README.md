@@ -94,8 +94,15 @@ The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
 disposable Automation Test profile, validates the selected autosave, calculates
 the exact truck-and-driver estimate, and exposes a plan-only controller command.
-Live execution remains locked until the desktop/controller boundary receives
-its own integration and interruption tests.
+Before review, FleetFill now proves from the current `game.log.txt` that ETS2 is
+running, the most recently selected career is the chosen profile, its type is
+`PC_local`, and the matching local autosave was loaded after selection. A stale
+log, cloud career, different folder, or merely highlighted career fails closed.
+
+The supervised-run state model already understands preflight, countdown,
+checkpoint progress, cancellation, controller aborts, success, and report paths.
+Live execution remains centrally locked until the Qt subprocess boundary and
+safe interruption behavior receive their final integration tests.
 
 The save-inspector helper uses Node.js and a pinned dependency:
 
@@ -116,8 +123,8 @@ python research\tools\ets2_batch_controller.py plan `
 A live command requires both `--execute` and an explicit disposable local
 profile path. Do not point it at an irreplaceable profile. Keep ETS2 at the
 tested UI settings and ensure the requested starting screen/state is correct.
-The desktop app will eventually replace this command-line setup with guided
-preflight checks.
+The desktop app additionally checks that the exact local career is active; the
+profile picker alone does not switch or control the career loaded inside ETS2.
 
 ## Privacy and source control
 
@@ -128,10 +135,10 @@ repository.
 
 ## Project direction
 
-The next phase connects the desktop shell to the guarded controller through a
-supervised runner with explicit confirmation, progress checkpoints,
-fullscreen-friendly completion/error notifications, and recovery guidance.
-Packaging and a normal Windows installer follow after that boundary is proven.
+The next phase connects the tested supervised-run model to a guarded Qt process,
+polls the controller checkpoint file, and proves cancellation before the live
+lock is removed. Fullscreen-friendly completion/error notifications and History
+records follow, then packaging and a normal Windows installer.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.

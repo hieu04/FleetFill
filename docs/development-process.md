@@ -192,3 +192,37 @@ controller argument construction, the three-page navigation contract, and the
 default five-plus-five review. All 46 existing controller tests continue to
 pass. The Setup, History, and Settings pages were rendered with the real Windows
 Qt platform for visual QA at 1180x760.
+
+## 13. Prove the active career before arming automation
+
+The profile picker identifies which folder FleetFill would back up; it cannot
+switch the career loaded inside ETS2. That difference is safety-critical because
+the same UI controller would otherwise operate on whichever career the player
+last opened.
+
+The desktop preflight therefore reads the current ETS2 log and accepts only the
+latest coherent sequence:
+
+1. `Set profile finished` names the chosen FleetFill profile;
+2. `Profile type` is exactly `PC_local`;
+3. `New profile selected` confirms the same name;
+4. a later `Loading save` path uses `/home/profiles/<exact-folder-id>/`;
+5. ETS2 is currently running and the log does not predate that process.
+
+The parser deliberately discards evidence from earlier profile selections. A
+test-to-main sequence fails even when the earlier test selection was valid, and
+selecting a career without entering it fails because no later save load exists.
+The check is read-only and sends no window input.
+
+The Setup page runs this gate when the user chooses **Verify and review** and
+shows either the exact local-autosave proof or a stop reason. A separate pure
+Python supervised-run model now owns preflight, countdown, running,
+cancel-requested, succeeded, and failed states. It consumes the controller's
+`BATCH_*` output protocol and `batch-report.json` checkpoints without depending
+on Qt, making failure and cancellation behavior testable before live execution.
+
+The transient progress card follows the earlier design decision not to create a
+permanent Running tab: it appears only for an active/recent run, while durable
+results will eventually belong in History. Live process launch remains locked.
+The desktop/safety suite now has 27 tests; combined with 46 controller tests,
+the offline suite contains 73 passing tests.
