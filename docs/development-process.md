@@ -160,3 +160,35 @@ remaining product work includes the FleetFill desktop UI, persistent settings,
 history, guided preflight checks, fullscreen-friendly progress/error feedback,
 more failure and compatibility testing, packaging, code signing decisions, and
 a normal Windows installer.
+
+## 12. Build the first desktop shell
+
+The approved interface direction was implemented with PySide6 6.10.1 and Qt
+Widgets. This keeps the existing Python automation engine and the Windows UI in
+one language while retaining a supported path to a packaged `.exe`.
+
+The first shell establishes the final navigation model:
+
+- **Setup** automatically discovers local ETS2 profiles, prefers the disposable
+  Automation Test copy, shows the calibrated garage/truck/driver policies,
+  validates the profile/autosave, and calculates the exact cost;
+- **History** reserves the durable record for future app-controlled runs and
+  distinguishes them from earlier controller research;
+- **Settings** records the currently verified ETS2 environment and local
+  evidence policy.
+
+There is deliberately no permanent Running tab. After the user starts a future
+batch, ETS2 must remain in exclusive fullscreen; progress and completion will
+therefore be transient states and notifications, with the durable result stored
+under History.
+
+The shell can build and display the exact guarded controller command, but it
+cannot execute it yet. That lock ensures the subprocess boundary, cancellation,
+checkpoint streaming, and failure recovery are implemented and tested before a
+desktop button is capable of purchasing anything.
+
+Nine new tests cover profile discovery, profile validation, price calculation,
+controller argument construction, the three-page navigation contract, and the
+default five-plus-five review. All 46 existing controller tests continue to
+pass. The Setup, History, and Settings pages were rendered with the real Windows
+Qt platform for visual QA at 1180x760.
