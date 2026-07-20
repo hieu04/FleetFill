@@ -1,0 +1,23 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    dependencies:
+      '@trucky/sii-decrypt-ts':
+        specifier: 1.0.0
+        version: 1.0.0
+
+packages:
+
+  '@trucky/sii-decrypt-ts@1.0.0':
+    resolution: {integrity: sha512-MbodC3tuE5aEXqcIh+nxQlVg+Q6tjWELtpXRyoFksaups3tIh/i9Fqvvexvgmu1O9ypJYB1fNRjkVq79HKN4EA==}
+    engines: {node: '>=20.0.0'}
+
+snapshots:
+
+  '@trucky/sii-decrypt-ts@1.0.0': {}
