@@ -38,6 +38,8 @@ from fleetfill.domain import (
     discover_local_profiles,
     validate_request,
 )
+from fleetfill.preflight import ProfilePreflight, assess_active_profile
+from fleetfill.runner import RunnerState
 
 
 def money(value: int) -> str:
@@ -198,12 +200,15 @@ class SetupPage(QWidget):
         review.addWidget(label("Preflight", "sectionTitle"))
         self.profile_check = label("○  Choose a disposable profile", "muted")
         review.addWidget(self.profile_check)
+        self.active_profile_check = label("○  Active ETS2 career not checked", "muted")
+        self.active_profile_check.setWordWrap(True)
+        review.addWidget(self.active_profile_check)
         review.addWidget(label("●  ETS2 1.60 / English", "successText"))
         review.addWidget(label("●  1920×1080 / 100% scaling", "successText"))
         review.addWidget(label("●  Backup required before input", "successText"))
         review.addStretch()
 
-        self.review_button = QPushButton("Review plan")
+        self.review_button = QPushButton("Verify and review")
         self.review_button.setObjectName("primaryButton")
         self.review_button.clicked.connect(self._show_plan)
         review.addWidget(self.review_button)
@@ -214,6 +219,14 @@ class SetupPage(QWidget):
         )
         integration_note.setFixedHeight(34)
         review.addWidget(integration_note)
+
+        self.run_status_card, run_status = card_layout(amber=True)
+        self.run_status_title = label("Preparing FleetFill", "warningText")
+        self.run_status_message = label("", "muted", word_wrap=True)
+        run_status.addWidget(self.run_status_title)
+        run_status.addWidget(self.run_status_message)
+        self.run_status_card.hide()
+        page.addWidget(self.run_status_card)
 
         self._load_profiles()
         self._update_plan()
@@ -258,6 +271,12 @@ class SetupPage(QWidget):
             slots=int(self.slots_combo.currentData() or 5),
         )
 
+    def current_profile_info(self) -> ProfileInfo | None:
+        request = self.current_request()
+        if request.profile is None:
+            return None
+        return ProfileInfo(self.profile_combo.currentText(), request.profile)
+
     def _update_plan(self) -> None:
         request = self.current_request()
         errors = validate_request(request)
@@ -281,7 +300,37 @@ class SetupPage(QWidget):
             self.profile_check.setText("●  Disposable profile ready")
         self.profile_check.style().unpolish(self.profile_check)
         self.profile_check.style().polish(self.profile_check)
+        self._show_active_profile_result(None)
         self.plan_changed.emit()
+
+    def _show_active_profile_result(self, result: ProfilePreflight | None) -> None:
+        if result is None:
+            self.active_profile_check.setObjectName("muted")
+            self.active_profile_check.setText("○  Active ETS2 career checked on review")
+        elif result.passed:
+            self.active_profile_check.setObjectName("successText")
+            self.active_profile_check.setText(f"●  {result.summary}")
+        else:
+            self.active_profile_check.setObjectName("warningText")
+            self.active_profile_check.setText("○  Active ETS2 career does not match")
+        self.active_profile_check.style().unpolish(self.active_profile_check)
+        self.active_profile_check.style().polish(self.active_profile_check)
+
+    def show_run_status(self, state: RunnerState, message: str) -> None:
+        """Expose transient progress without creating a permanent Running tab."""
+
+        titles = {
+            RunnerState.PREFLIGHT: "Checking ETS2",
+            RunnerState.COUNTDOWN: "Return to ETS2",
+            RunnerState.RUNNING: "FleetFill is running",
+            RunnerState.CANCEL_REQUESTED: "Stopping safely",
+            RunnerState.SUCCEEDED: "Garage filled",
+            RunnerState.FAILED: "FleetFill stopped",
+            RunnerState.IDLE: "FleetFill is ready",
+        }
+        self.run_status_title.setText(titles[state])
+        self.run_status_message.setText(message)
+        self.run_status_card.show()
 
     def _show_plan(self) -> None:
         request = self.current_request()
@@ -289,13 +338,27 @@ class SetupPage(QWidget):
         if errors:
             QMessageBox.warning(self, "FleetFill preflight", "\n".join(errors))
             return
+        profile = self.current_profile_info()
+        assert profile is not None
+        preflight = assess_active_profile(profile)
+        self._show_active_profile_result(preflight)
+        if not preflight.passed:
+            message = QMessageBox(self)
+            message.setWindowTitle("FleetFill stopped safely")
+            message.setIcon(QMessageBox.Icon.Warning)
+            message.setText("The active ETS2 career does not match this FleetFill plan.")
+            message.setInformativeText(
+                "No game input was sent.\n\n" + "\n".join(preflight.problems)
+            )
+            message.exec()
+            return
         command = controller_command_preview(request, self.project_root)
         message = QMessageBox(self)
-        message.setWindowTitle("FleetFill plan ready")
+        message.setWindowTitle("FleetFill safety check passed")
         message.setIcon(QMessageBox.Icon.Information)
         message.setText(
-            f"FleetFill will buy {request.slots} matching trucks and hire "
-            f"{request.slots} drivers into the same empty garage."
+            f"{preflight.summary}. FleetFill will buy {request.slots} matching "
+            f"trucks and hire {request.slots} drivers into the same empty garage."
         )
         message.setInformativeText(
             f"Estimated total: {money(request.total_cost_eur)}\n\n"
@@ -442,7 +505,7 @@ class MainWindow(QMainWindow):
         self.nav_buttons[0].setChecked(True)
         nav.addStretch()
         nav.addWidget(label(f"FleetFill {__version__}", "muted"))
-        nav.addWidget(label("Private prototype", "muted"))
+        nav.addWidget(label("Development preview", "muted"))
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)

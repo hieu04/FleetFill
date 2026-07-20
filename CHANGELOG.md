@@ -16,9 +16,22 @@ not produced a public release yet.
 - Plan-only preview of the guarded unified controller command.
 - Nine desktop/domain tests in addition to the existing 46 controller tests.
 - Windows-rendered screenshot mode for repeatable visual QA.
+- Read-only active-career proof derived from ETS2's latest coherent profile
+  selection, profile type, and loaded-save path.
+- Windows process-start correlation so an old matching log cannot satisfy the
+  current-session preflight.
+- Supervised run states for preflight, countdown, progress checkpoints,
+  cancellation, success, aborts, and report discovery.
+- Transient in-app progress surface without adding a permanent Running tab.
+- Eighteen safety/runner tests, bringing the desktop-side suite to 27 tests and
+  the full offline suite to 73 tests.
+- MIT licensing for FleetFill's original source, package metadata, and a
+  third-party dependency notice with a Qt/LGPL packaging gate.
 
 ### Safety
 
 - The desktop shell cannot start live controller input yet.
 - Live plans require an explicit disposable profile and retain the controller's
   preflight-backup requirement.
+- Choosing a profile folder is not treated as proof of the active game career;
+  mismatched, cloud, unloaded, stale, and ambiguous states stop before input.

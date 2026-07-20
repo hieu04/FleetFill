@@ -8,6 +8,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
+from fleetfill.runner import RunnerState  # noqa: E402
 from fleetfill.ui import MainWindow  # noqa: E402
 
 
@@ -35,6 +36,17 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(page.review_values["trucks"].text(), "5 identical")
         self.assertEqual(page.review_values["drivers"].text(), "5")
         self.assertEqual(page.total_value.text(), "€1,249,925")
+
+    def test_setup_exposes_active_profile_preflight_and_transient_status(self) -> None:
+        page = self.window.setup_page
+        self.assertIn("Active ETS2 career", page.active_profile_check.text())
+        self.assertTrue(page.run_status_card.isHidden())
+
+        page.show_run_status(RunnerState.COUNTDOWN, "Return to ETS2 now")
+
+        self.assertFalse(page.run_status_card.isHidden())
+        self.assertEqual(page.run_status_title.text(), "Return to ETS2")
+        self.assertEqual(page.run_status_message.text(), "Return to ETS2 now")
 
 
 if __name__ == "__main__":

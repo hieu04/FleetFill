@@ -137,8 +137,9 @@ map translation, locator replay, and home/service navigation.
 ## 10. Third-party components
 
 The FleetFill UI automation logic and tests in this repository were developed
-for this project. Runtime image recognition currently relies on the open-source
-Python packages NumPy and Pillow.
+for this project and are released under the MIT License. Runtime image
+recognition relies on the open-source Python packages NumPy and Pillow, while
+the desktop shell uses PySide6/Qt for Python under its upstream license terms.
 
 Research utilities also used:
 
@@ -152,6 +153,12 @@ Downloaded tools, their source trees, game archives, generated evidence, and
 personal save data are excluded from Git. Their respective upstream licenses
 apply to those components; they are not vendored as part of FleetFill's source
 payload.
+
+`THIRD_PARTY_NOTICES.md` records the direct and optional dependency licenses.
+This source-level inventory is not by itself sufficient for a packaged Windows
+release. Before producing an installer, the build must inventory the exact
+PySide6/Qt and other binaries it includes, ship the applicable license texts and
+notices, and satisfy the Qt LGPLv3 requirements for the distributed libraries.
 
 ## 11. What remains
 
@@ -192,3 +199,37 @@ controller argument construction, the three-page navigation contract, and the
 default five-plus-five review. All 46 existing controller tests continue to
 pass. The Setup, History, and Settings pages were rendered with the real Windows
 Qt platform for visual QA at 1180x760.
+
+## 13. Prove the active career before arming automation
+
+The profile picker identifies which folder FleetFill would back up; it cannot
+switch the career loaded inside ETS2. That difference is safety-critical because
+the same UI controller would otherwise operate on whichever career the player
+last opened.
+
+The desktop preflight therefore reads the current ETS2 log and accepts only the
+latest coherent sequence:
+
+1. `Set profile finished` names the chosen FleetFill profile;
+2. `Profile type` is exactly `PC_local`;
+3. `New profile selected` confirms the same name;
+4. a later `Loading save` path uses `/home/profiles/<exact-folder-id>/`;
+5. ETS2 is currently running and the log does not predate that process.
+
+The parser deliberately discards evidence from earlier profile selections. A
+test-to-main sequence fails even when the earlier test selection was valid, and
+selecting a career without entering it fails because no later save load exists.
+The check is read-only and sends no window input.
+
+The Setup page runs this gate when the user chooses **Verify and review** and
+shows either the exact local-autosave proof or a stop reason. A separate pure
+Python supervised-run model now owns preflight, countdown, running,
+cancel-requested, succeeded, and failed states. It consumes the controller's
+`BATCH_*` output protocol and `batch-report.json` checkpoints without depending
+on Qt, making failure and cancellation behavior testable before live execution.
+
+The transient progress card follows the earlier design decision not to create a
+permanent Running tab: it appears only for an active/recent run, while durable
+results will eventually belong in History. Live process launch remains locked.
+The desktop/safety suite now has 27 tests; combined with 46 controller tests,
+the offline suite contains 73 passing tests.
