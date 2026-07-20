@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fleetfill"
+version = "0.1.0"
+description = "Guarded ETS2 garage-filling automation"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=2.0,<3",
+  "Pillow>=11,<13",
+  "PySide6==6.10.1",
+]
+
+[project.scripts]
+fleetfill = "fleetfill.application:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

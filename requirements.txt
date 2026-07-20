@@ -1,5 +1,6 @@
 numpy>=2.0,<3
 Pillow>=11,<13
+PySide6==6.10.1
 
 # Only extract-video-storyboard.py needs OpenCV. Install it separately with:
 # python -m pip install opencv-python

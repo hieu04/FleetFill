@@ -5,8 +5,9 @@ company management. Its goal is to fill a garage in one guarded operation:
 purchase matching trucks, hire available drivers, and assign both to the same
 garage.
 
-The repository currently contains the proven automation engine and its research
-tools. It does **not** yet contain the finished desktop interface or installer.
+The repository contains the proven automation engine, its research tools, and
+the first functional FleetFill desktop shell. The interface is not yet allowed
+to start live game input, and the Windows installer has not been built.
 
 For the chronological build story, see
 [`docs/development-process.md`](docs/development-process.md).
@@ -78,8 +79,23 @@ Use Python 3.12 on Windows:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
+python -m pip install --no-deps --editable .
+python -m unittest discover -s tests -p "test_*.py" -v
 python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
+
+Launch the current desktop shell:
+
+```powershell
+.\scripts\run-fleetfill.ps1
+```
+
+The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
+and Settings navigation. Setup discovers local ETS2 profiles, prefers the
+disposable Automation Test profile, validates the selected autosave, calculates
+the exact truck-and-driver estimate, and exposes a plan-only controller command.
+Live execution remains locked until the desktop/controller boundary receives
+its own integration and interruption tests.
 
 The save-inspector helper uses Node.js and a pinned dependency:
 
@@ -112,9 +128,10 @@ repository.
 
 ## Project direction
 
-The next phase is a native-looking FleetFill desktop app with Setup, History,
-and Settings screens; explicit preflight checks; fullscreen-friendly progress
-notifications; recovery guidance; and a normal Windows installer.
+The next phase connects the desktop shell to the guarded controller through a
+supervised runner with explicit confirmation, progress checkpoints,
+fullscreen-friendly completion/error notifications, and recovery guidance.
+Packaging and a normal Windows installer follow after that boundary is proven.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.
