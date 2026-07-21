@@ -51,6 +51,14 @@ not produced a public release yet.
   garage or pre-existing truck configuration changes.
 - Save-audit garage identity is written back into durable History, and opening
   History refreshes evidence finalized while the app remained running.
+- A separate graduated live-test launcher that enables one-to-five batches only
+  on the disposable Automation Test profile while normal mode remains locked.
+- Pre-input company inspection from the timestamped backup, including exact
+  balance sufficiency and existence of a completely empty large garage.
+- Generalized runtime and post-exit evidence validation for batch sizes one
+  through five.
+- Nine additional policy, UI-mode, company-preflight, runtime, and finalizer
+  tests, bringing the full offline suite to 105 tests.
 - Thirteen validation, policy, launcher, discovery, and save-audit tests,
   bringing the full offline suite to 96 tests.
 

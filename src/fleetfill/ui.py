@@ -39,6 +39,7 @@ from fleetfill.domain import (
     controller_command_preview,
     decode_profile_folder_name,
     discover_local_profiles,
+    validate_graduated_live_request,
     validate_live_validation_request,
     validate_request,
     simulator_arguments,
@@ -51,7 +52,7 @@ from fleetfill.runner import (
     read_history_records,
     write_history_record,
 )
-from fleetfill.validation import verify_one_plus_one_run
+from fleetfill.validation import verify_batch_run
 
 
 def money(value: int) -> str:
@@ -88,11 +89,22 @@ class SetupPage(QWidget):
     live_validation_requested = Signal(object, object)
     cancel_requested = Signal()
 
-    def __init__(self, project_root: Path, *, live_validation_enabled: bool = False) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        *,
+        live_validation_enabled: bool = False,
+        graduated_live_enabled: bool = False,
+    ) -> None:
         super().__init__()
         self.project_root = project_root
         self.live_validation_enabled = live_validation_enabled
+        self.graduated_live_enabled = graduated_live_enabled
+        self.live_execution_enabled = (
+            live_validation_enabled or graduated_live_enabled
+        )
         self.run_is_simulation = True
+        self.live_run_label = "Live validation"
         self.profiles: list[ProfileInfo] = []
 
         page = QVBoxLayout(self)
@@ -234,7 +246,11 @@ class SetupPage(QWidget):
             (
                 "Validation mode — exactly one truck and one driver."
                 if live_validation_enabled
-                else "Normal mode — live input remains locked."
+                else (
+                    "Live test mode — 1–5 slots on the disposable profile."
+                    if graduated_live_enabled
+                    else "Normal mode — live input remains locked."
+                )
             ),
             "muted",
             word_wrap=True,
@@ -349,7 +365,7 @@ class SetupPage(QWidget):
     def show_run_status(self, state: RunnerState, message: str) -> None:
         """Expose transient progress without creating a permanent Running tab."""
 
-        terminal_kind = "Simulation" if self.run_is_simulation else "Live validation"
+        terminal_kind = "Simulation" if self.run_is_simulation else self.live_run_label
         titles = {
             RunnerState.PREFLIGHT: "Checking ETS2",
             RunnerState.COUNTDOWN: "Return to ETS2",
@@ -373,8 +389,11 @@ class SetupPage(QWidget):
         if state in {RunnerState.SUCCEEDED, RunnerState.CANCELLED, RunnerState.FAILED}:
             self.status_hide_timer.start(3500)
 
-    def set_run_kind(self, *, simulated: bool) -> None:
+    def set_run_kind(
+        self, *, simulated: bool, live_label: str = "Live validation"
+    ) -> None:
         self.run_is_simulation = simulated
+        self.live_run_label = live_label
 
     def _position_run_status(self) -> None:
         hint = self.run_status_card.sizeHint()
@@ -420,25 +439,41 @@ class SetupPage(QWidget):
             f"trucks and hire {request.slots} drivers into the same empty garage."
         )
         message.setDetailedText(command)
-        if self.live_validation_enabled:
-            live_errors = validate_live_validation_request(
-                request, profile, enabled=True
-            )
+        if self.live_execution_enabled:
+            if self.live_validation_enabled:
+                live_errors = validate_live_validation_request(
+                    request, profile, enabled=True
+                )
+            else:
+                live_errors = validate_graduated_live_request(
+                    request, profile, enabled=self.graduated_live_enabled
+                )
             if live_errors:
                 QMessageBox.warning(
                     self, "FleetFill validation locked", "\n".join(live_errors)
                 )
                 return
-            message.setWindowTitle("FleetFill live validation ready")
+            mode_title = (
+                "FleetFill live validation ready"
+                if self.live_validation_enabled
+                else "FleetFill graduated live test ready"
+            )
+            message.setWindowTitle(mode_title)
             message.setIcon(QMessageBox.Icon.Warning)
             message.setInformativeText(
                 f"Estimated spend: {money(request.total_cost_eur)}\n\n"
                 "This WILL control ETS2 after a 10-second countdown. It is "
-                "restricted to one truck and one driver on the disposable "
-                "Automation Test career. A timestamped backup is created first."
+                f"restricted to {request.slots} truck(s) and {request.slots} "
+                "driver(s) on the disposable Automation Test career. A "
+                "timestamped backup and balance check are created first."
             )
             run_button = message.addButton(
-                "Start 1+1 live validation", QMessageBox.ButtonRole.AcceptRole
+                (
+                    "Start 1+1 live validation"
+                    if self.live_validation_enabled
+                    else f"Start {request.slots}+{request.slots} live test"
+                ),
+                QMessageBox.ButtonRole.AcceptRole,
             )
         else:
             message.setInformativeText(
@@ -452,7 +487,7 @@ class SetupPage(QWidget):
         message.addButton(QMessageBox.StandardButton.Cancel)
         message.exec()
         if message.clickedButton() is run_button:
-            if self.live_validation_enabled:
+            if self.live_execution_enabled:
                 self.live_validation_requested.emit(request, profile)
             else:
                 self.simulation_requested.emit(request, profile)
@@ -565,10 +600,22 @@ class SettingsPage(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, project_root: Path, *, live_validation_enabled: bool = False) -> None:
+    def __init__(
+        self,
+        project_root: Path,
+        *,
+        live_validation_enabled: bool = False,
+        graduated_live_enabled: bool = False,
+    ) -> None:
         super().__init__()
+        if live_validation_enabled and graduated_live_enabled:
+            raise ValueError("Choose only one FleetFill live development mode")
         self.project_root = project_root
         self.live_validation_enabled = live_validation_enabled
+        self.graduated_live_enabled = graduated_live_enabled
+        self.live_execution_enabled = (
+            live_validation_enabled or graduated_live_enabled
+        )
         self.supervisor = ControllerProcessSupervisor(self)
         self._active_run_dir: Path | None = None
         self._active_profile_name = ""
@@ -601,7 +648,13 @@ class MainWindow(QMainWindow):
         brand_copy.addWidget(label("ETS2 garage automation", "muted"))
         top.addLayout(brand_copy)
         top.addStretch()
-        mode = "1+1 validation armed" if live_validation_enabled else "Prototype"
+        mode = (
+            "1+1 validation armed"
+            if live_validation_enabled
+            else (
+                "1–5 live test armed" if graduated_live_enabled else "Prototype"
+            )
+        )
         top.addWidget(label(f"●  {mode}  •  ETS2 1.60", "statusPill"))
         shell.addWidget(top_bar)
 
@@ -621,7 +674,9 @@ class MainWindow(QMainWindow):
 
         self.stack = QStackedWidget()
         self.setup_page = SetupPage(
-            project_root, live_validation_enabled=live_validation_enabled
+            project_root,
+            live_validation_enabled=live_validation_enabled,
+            graduated_live_enabled=graduated_live_enabled,
         )
         self.history_page = HistoryPage(project_root)
         self.settings_page = SettingsPage(project_root)
@@ -693,11 +748,18 @@ class MainWindow(QMainWindow):
         )
 
     def _start_live_validation(self, request: FillRequest, profile: ProfileInfo) -> None:
-        """Start only the separately armed, disposable-profile 1+1 path."""
+        """Start only a separately armed disposable-profile live path."""
 
-        errors = validate_live_validation_request(
-            request, profile, enabled=self.live_validation_enabled
-        )
+        if self.live_validation_enabled:
+            errors = validate_live_validation_request(request, profile, enabled=True)
+            run_suffix = "live-validation"
+            live_label = "Live validation"
+        else:
+            errors = validate_graduated_live_request(
+                request, profile, enabled=self.graduated_live_enabled
+            )
+            run_suffix = "live-test"
+            live_label = "Live batch"
         preflight = assess_active_profile(profile)
         self.setup_page._show_active_profile_result(preflight)
         if errors or not preflight.passed:
@@ -714,14 +776,14 @@ class MainWindow(QMainWindow):
             / "research"
             / "output"
             / "desktop-runs"
-            / f"{stamp}-live-validation"
+            / f"{stamp}-{run_suffix}"
         )
         command = controller_arguments(request, self.project_root, run_dir)
         self._active_run_dir = run_dir
         self._active_profile_name = profile.name
         self._active_slots = request.slots
         self._active_simulated = False
-        self.setup_page.set_run_kind(simulated=False)
+        self.setup_page.set_run_kind(simulated=False, live_label=live_label)
         self.setup_page.review_button.setEnabled(False)
         self.setup_page.show_run_status(
             RunnerState.COUNTDOWN,
@@ -730,9 +792,9 @@ class MainWindow(QMainWindow):
         self.supervisor.start(
             command,
             run_dir,
-            2,
+            request.slots * 2,
             simulated=False,
-            live_enabled=self.live_validation_enabled,
+            live_enabled=self.live_execution_enabled,
         )
 
     def _finish_run(self, model) -> None:
@@ -752,7 +814,9 @@ class MainWindow(QMainWindow):
                 pass
             if model.state == RunnerState.SUCCEEDED:
                 try:
-                    evidence = verify_one_plus_one_run(self._active_run_dir)
+                    evidence = verify_batch_run(
+                        self._active_run_dir, expected_count=self._active_slots
+                    )
                     validation_passed = evidence.passed
                     validation_report = evidence.report_path
                     if evidence.passed:
@@ -783,6 +847,13 @@ class MainWindow(QMainWindow):
 
 
 def build_window(
-    project_root: Path, *, live_validation_enabled: bool = False
+    project_root: Path,
+    *,
+    live_validation_enabled: bool = False,
+    graduated_live_enabled: bool = False,
 ) -> MainWindow:
-    return MainWindow(project_root, live_validation_enabled=live_validation_enabled)
+    return MainWindow(
+        project_root,
+        live_validation_enabled=live_validation_enabled,
+        graduated_live_enabled=graduated_live_enabled,
+    )

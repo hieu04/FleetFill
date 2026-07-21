@@ -1,4 +1,4 @@
-"""Finalize a FleetFill 1+1 run after ETS2 has exited cleanly.
+"""Finalize a FleetFill 1-5 test run after ETS2 has exited cleanly.
 
 This tool is read-only with respect to the ETS2 profile. It copies the stable
 post-run autosave into the run evidence directory, decodes before/after copies,
@@ -15,18 +15,19 @@ import sys
 from pathlib import Path
 
 
-EXPECTED_COST_EUR = 249_985
+PER_SLOT_COST_EUR = 249_985
 
 
-def load_run_paths(run_dir: Path) -> tuple[Path, Path]:
+def load_run_paths(run_dir: Path) -> tuple[Path, Path, int]:
     preflight = json.loads((run_dir / "preflight.json").read_text(encoding="utf-8"))
-    if preflight.get("phase") != "fill" or preflight.get("count") != 1:
-        raise ValueError("Run evidence is not an exact one-plus-one fill validation")
+    count = int(preflight.get("count", 0))
+    if preflight.get("phase") != "fill" or not 1 <= count <= 5:
+        raise ValueError("Run evidence is not a guarded one-to-five fill batch")
     profile = Path(preflight["backup"]["profile"])
     before = Path(preflight["backup"]["backup"]) / "autosave" / "game.sii"
     if not profile.is_dir() or not before.is_file():
         raise ValueError("Run evidence does not contain a usable profile backup")
-    return profile, before
+    return profile, before, count
 
 
 def run_checked(command: list[str], *, cwd: Path | None = None) -> None:
@@ -73,7 +74,7 @@ def main() -> int:
         return 2
 
     run_dir = args.run_dir.resolve()
-    profile, before = load_run_paths(run_dir)
+    profile, before, count = load_run_paths(run_dir)
     current = profile / "save" / "autosave" / "game.sii"
     if not current.is_file():
         print(f"VALIDATION_REFUSED: Current autosave was not found: {current}")
@@ -104,9 +105,9 @@ def main() -> int:
             str(before_text),
             str(after_text),
             "--count",
-            "1",
+            str(count),
             "--expected-cost",
-            str(EXPECTED_COST_EUR),
+            str(count * PER_SLOT_COST_EUR),
             "--output",
             str(report),
         ],
@@ -118,7 +119,7 @@ def main() -> int:
     if not passed:
         print("VALIDATION_FAILED: The semantic save audit did not pass.")
         return 1
-    print(f"ONE_PLUS_ONE_SAVE_AUDIT: {report.resolve()}")
+    print(f"FLEETFILL_BATCH_SAVE_AUDIT: {report.resolve()}")
     return 0
 
 

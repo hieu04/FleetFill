@@ -340,3 +340,29 @@ external post-exit tool becomes visible without restarting FleetFill.
 This completes the small live-validation gate. Normal one-to-five desktop input
 remains locked while the proven safeguards are carried into the general launch
 policy.
+
+## 17. Graduate the proven boundary to one-to-five test batches
+
+The successful 1+1 run justified widening batch size, but not widening profile
+scope. A new graduated developer launcher therefore enables one through five
+slots only for `ETS2 Automation Test`. The original 1+1 validation launcher
+retains its exact single-slot lock, and the normal FleetFill launcher still
+cannot cross the live-input boundary.
+
+Runtime evidence now derives its required truck confirmations, driver
+confirmations, total guarded actions, and expected spend from the selected batch
+size. The post-exit finalizer likewise reads the count from preflight evidence
+and invokes the semantic verifier with the matching expected cost, allowing the
+same audit path to prove a complete 5+5 result.
+
+The controller also closes a product-safety gap before the countdown. After
+creating its timestamped profile backup, it decodes only that copy and records a
+company summary. A fill run is refused before UI input unless the balance covers
+the full truck-plus-hiring cost and the save contains a completely empty
+five-slot garage. A read-only smoke test against the encrypted pre-validation
+backup proved the pipeline with EUR 76,537,256 available, EUR 1,249,925 required
+for 5+5, and 41 qualifying empty garages.
+
+The app suite now contains 47 tests and the controller/save-audit suite contains
+58, for 105 passing offline tests. The next user-assisted step is the full 5+5
+desktop test on the disposable profile, followed by a clean-exit save audit.

@@ -54,6 +54,17 @@ class MainWindowTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_graduated_live_mode_keeps_one_to_five_selector_enabled(self) -> None:
+        window = MainWindow(Path.cwd(), graduated_live_enabled=True)
+        try:
+            page = window.setup_page
+            self.assertEqual(page.slots_combo.currentData(), 5)
+            self.assertTrue(page.slots_combo.isEnabled())
+            self.assertIn("Live test mode", page.integration_note.text())
+            self.assertEqual(page.total_value.text(), "€1,249,925")
+        finally:
+            window.close()
+
     def test_setup_exposes_active_profile_preflight_and_transient_status(self) -> None:
         page = self.window.setup_page
         self.assertIn("Active ETS2 career", page.active_profile_check.text())

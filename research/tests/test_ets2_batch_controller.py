@@ -26,6 +26,7 @@ from ets2_batch_controller import (  # noqa: E402
     run_plan,
     run_live,
     run_truck_phase,
+    validate_company_preflight,
 )
 
 
@@ -205,6 +206,35 @@ class GarageStateTests(unittest.TestCase):
                 "2",
             ],
         )
+
+
+class CompanyPreflightTests(unittest.TestCase):
+    def company(self, *, money: int = 2_000_000, empty: bool = True) -> dict:
+        return {
+            "money_eur": money,
+            "large_garages": [
+                {
+                    "id": "garage.test",
+                    "occupied": 0 if empty else 1,
+                    "truck_present": 0,
+                    "free": 5 if empty else 4,
+                    "invalid_driver_only": 0,
+                }
+            ],
+        }
+
+    def test_accepts_affordable_batch_with_empty_large_garage(self) -> None:
+        result = validate_company_preflight(self.company(), 5)
+        self.assertEqual(result["planned_cost_eur"], 1_249_925)
+        self.assertEqual(result["empty_large_garages"], ["garage.test"])
+
+    def test_rejects_insufficient_balance(self) -> None:
+        with self.assertRaisesRegex(BatchAbort, "Insufficient company balance"):
+            validate_company_preflight(self.company(money=1_000_000), 5)
+
+    def test_rejects_save_without_empty_large_garage(self) -> None:
+        with self.assertRaisesRegex(BatchAbort, "no completely empty"):
+            validate_company_preflight(self.company(empty=False), 1)
 
 
 class PhaseCompositionTests(unittest.TestCase):

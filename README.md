@@ -113,6 +113,18 @@ requires a completely empty five-slot garage, creates a backup, and retains the
 10-second return-to-game countdown. It is not the general one-to-five product
 unlock.
 
+The next graduated developer launcher allows one to five slots while retaining
+the disposable-profile restriction:
+
+```powershell
+.\scripts\run-fleetfill-live-test.ps1
+```
+
+Before its countdown, the controller decodes only the timestamped backup copy,
+proves the company can afford the entire requested batch, and proves that the
+save contains at least one completely empty large garage. The normal launcher
+and main/Steam Cloud profiles remain live-input locked.
+
 The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
 disposable Automation Test profile, validates the selected autosave, calculates
@@ -164,10 +176,11 @@ repository.
 ## Project direction
 
 The deliberately small desktop 1+1 validation has passed both its immediate
-runtime checks and independent post-exit save audit. The next engineering gate
-is deciding how to graduate that proven boundary into normal one-to-five
-execution without weakening the profile, backup, cancellation, or evidence
-requirements. Packaging and a Windows installer follow.
+runtime checks and independent post-exit save audit. Guarded one-to-five batches
+are now implemented behind a separate disposable-profile live-test launcher;
+the next real gate is a full 5+5 run through that desktop boundary. Main/Steam
+Cloud support remains locked until that audit passes. Packaging and a Windows
+installer follow.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.

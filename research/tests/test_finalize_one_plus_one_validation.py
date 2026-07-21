@@ -31,16 +31,40 @@ class FinalizeValidationTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            self.assertEqual(load_run_paths(run_dir), (profile, before))
+            self.assertEqual(load_run_paths(run_dir), (profile, before, 1))
 
     def test_rejects_non_validation_batch(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             run_dir = Path(temp)
             (run_dir / "preflight.json").write_text(
-                json.dumps({"phase": "fill", "count": 5}), encoding="utf-8"
+                json.dumps({"phase": "fill", "count": 6}), encoding="utf-8"
             )
-            with self.assertRaisesRegex(ValueError, "one-plus-one"):
+            with self.assertRaisesRegex(ValueError, "one-to-five"):
                 load_run_paths(run_dir)
+
+    def test_accepts_five_slot_batch_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "run"
+            profile = root / "profile"
+            before = run_dir / "preflight-backup" / "autosave" / "game.sii"
+            profile.mkdir()
+            before.parent.mkdir(parents=True)
+            before.write_text("save", encoding="utf-8")
+            (run_dir / "preflight.json").write_text(
+                json.dumps(
+                    {
+                        "phase": "fill",
+                        "count": 5,
+                        "backup": {
+                            "profile": str(profile),
+                            "backup": str(run_dir / "preflight-backup"),
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            self.assertEqual(load_run_paths(run_dir), (profile, before, 5))
 
     def test_records_passed_audit_in_runtime_and_history_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
