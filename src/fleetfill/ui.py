@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import datetime
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
@@ -37,9 +38,16 @@ from fleetfill.domain import (
     decode_profile_folder_name,
     discover_local_profiles,
     validate_request,
+    simulator_arguments,
 )
 from fleetfill.preflight import ProfilePreflight, assess_active_profile
-from fleetfill.runner import RunnerState
+from fleetfill.process import ControllerProcessSupervisor
+from fleetfill.runner import (
+    RunHistoryRecord,
+    RunnerState,
+    read_history_records,
+    write_history_record,
+)
 
 
 def money(value: int) -> str:
@@ -72,6 +80,8 @@ def field_label(text: str) -> QLabel:
 
 class SetupPage(QWidget):
     plan_changed = Signal()
+    simulation_requested = Signal(object, object)
+    cancel_requested = Signal()
 
     def __init__(self, project_root: Path) -> None:
         super().__init__()
@@ -223,8 +233,11 @@ class SetupPage(QWidget):
         self.run_status_card, run_status = card_layout(amber=True)
         self.run_status_title = label("Preparing FleetFill", "warningText")
         self.run_status_message = label("", "muted", word_wrap=True)
+        self.cancel_button = QPushButton("Cancel safely")
+        self.cancel_button.clicked.connect(self.cancel_requested.emit)
         run_status.addWidget(self.run_status_title)
         run_status.addWidget(self.run_status_message)
+        run_status.addWidget(self.cancel_button)
         self.run_status_card.hide()
         page.addWidget(self.run_status_card)
 
@@ -324,12 +337,16 @@ class SetupPage(QWidget):
             RunnerState.COUNTDOWN: "Return to ETS2",
             RunnerState.RUNNING: "FleetFill is running",
             RunnerState.CANCEL_REQUESTED: "Stopping safely",
+            RunnerState.CANCELLED: "Simulation cancelled",
             RunnerState.SUCCEEDED: "Garage filled",
             RunnerState.FAILED: "FleetFill stopped",
             RunnerState.IDLE: "FleetFill is ready",
         }
         self.run_status_title.setText(titles[state])
         self.run_status_message.setText(message)
+        cancellable = state in {RunnerState.COUNTDOWN, RunnerState.RUNNING}
+        self.cancel_button.setVisible(cancellable)
+        self.cancel_button.setEnabled(cancellable)
         self.run_status_card.show()
 
     def _show_plan(self) -> None:
@@ -362,32 +379,61 @@ class SetupPage(QWidget):
         )
         message.setInformativeText(
             f"Estimated total: {money(request.total_cost_eur)}\n\n"
-            "The desktop shell is not permitted to start live input yet. "
-            "Controller integration is the next guarded milestone."
+            "This build can now test the complete desktop lifecycle with a "
+            "no-input simulator. It will not click or control ETS2. Live "
+            "controller execution remains locked."
         )
         message.setDetailedText(command)
+        simulate_button = message.addButton(
+            "Run safe simulation", QMessageBox.ButtonRole.AcceptRole
+        )
+        message.addButton(QMessageBox.StandardButton.Cancel)
         message.exec()
+        if message.clickedButton() is simulate_button:
+            self.simulation_requested.emit(request, profile)
 
 
 class HistoryPage(QWidget):
-    def __init__(self) -> None:
+    def __init__(self, project_root: Path) -> None:
         super().__init__()
+        self.history_root = project_root / "research" / "output" / "desktop-runs"
         page = QVBoxLayout(self)
         page.setContentsMargins(32, 28, 32, 30)
         page.setSpacing(20)
         page.addWidget(label("History", "pageTitle"))
         page.addWidget(label("FleetFill app runs and their recovery records will appear here.", "muted"))
         empty_card, content = card_layout()
-        content.addWidget(label("No desktop-app runs yet", "sectionTitle"))
-        content.addWidget(
-            label(
-                "The verified Stuttgart 5+5 run belongs to controller research. New app runs will record their plan, checkpoints, final result, and backup location here.",
-                "muted",
-                word_wrap=True,
-            )
-        )
+        self.history_title = label("No desktop-app runs yet", "sectionTitle")
+        self.history_details = label("", "muted", word_wrap=True)
+        content.addWidget(self.history_title)
+        content.addWidget(self.history_details)
         content.addStretch()
         page.addWidget(empty_card, 1)
+        self.refresh()
+
+    def refresh(self) -> None:
+        records = read_history_records(self.history_root)
+        if not records:
+            self.history_title.setText("No desktop-app runs yet")
+            self.history_details.setText(
+                "The verified Stuttgart 5+5 run belongs to controller research. "
+                "New app runs will record their plan, checkpoints, final result, "
+                "and backup location here."
+            )
+            return
+        latest = records[0]
+        kind = "Simulation" if latest.simulated else "Live run"
+        self.history_title.setText(f"{kind}: {latest.state.replace('_', ' ').title()}")
+        details = (
+            f"{latest.created_at}  •  {latest.profile_name}  •  {latest.slots} slot(s)\n"
+            f"Completed {latest.completed_transactions} of "
+            f"{latest.requested_transactions} guarded actions."
+        )
+        if latest.error:
+            details += f"\nReason: {latest.error}"
+        if latest.report_path:
+            details += f"\nReport: {latest.report_path}"
+        self.history_details.setText(details)
 
 
 class SettingsPage(QWidget):
@@ -439,6 +485,10 @@ class MainWindow(QMainWindow):
     def __init__(self, project_root: Path) -> None:
         super().__init__()
         self.project_root = project_root
+        self.supervisor = ControllerProcessSupervisor(self)
+        self._active_run_dir: Path | None = None
+        self._active_profile_name = ""
+        self._active_slots = 0
         self.setWindowTitle("FleetFill")
         self.setMinimumSize(1040, 680)
         self.resize(1180, 760)
@@ -485,11 +535,15 @@ class MainWindow(QMainWindow):
 
         self.stack = QStackedWidget()
         self.setup_page = SetupPage(project_root)
-        self.history_page = HistoryPage()
+        self.history_page = HistoryPage(project_root)
         self.settings_page = SettingsPage(project_root)
         self.stack.addWidget(self.setup_page)
         self.stack.addWidget(self.history_page)
         self.stack.addWidget(self.settings_page)
+        self.setup_page.simulation_requested.connect(self._start_simulation)
+        self.setup_page.cancel_requested.connect(self.supervisor.request_cancel)
+        self.supervisor.state_changed.connect(self.setup_page.show_run_status)
+        self.supervisor.run_finished.connect(self._finish_run)
 
         group = QButtonGroup(self)
         group.setExclusive(True)
@@ -509,6 +563,50 @@ class MainWindow(QMainWindow):
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)
+
+    def _start_simulation(self, request: FillRequest, profile: ProfileInfo) -> None:
+        # The profile may have changed while the confirmation dialog was open.
+        preflight = assess_active_profile(profile)
+        self.setup_page._show_active_profile_result(preflight)
+        if not preflight.passed:
+            QMessageBox.warning(
+                self,
+                "FleetFill stopped safely",
+                "The active profile changed. No process was started.\n\n"
+                + "\n".join(preflight.problems),
+            )
+            return
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        run_dir = self.project_root / "research" / "output" / "desktop-runs" / f"{stamp}-simulation"
+        command = simulator_arguments(request, run_dir)
+        self._active_run_dir = run_dir
+        self._active_profile_name = profile.name
+        self._active_slots = request.slots
+        self.setup_page.review_button.setEnabled(False)
+        self.setup_page.show_run_status(
+            RunnerState.COUNTDOWN,
+            "Starting the no-input lifecycle simulator. ETS2 will not be controlled.",
+        )
+        self.supervisor.start(
+            command,
+            run_dir,
+            request.slots * 2,
+            simulated=True,
+        )
+
+    def _finish_run(self, model) -> None:
+        self.setup_page.review_button.setEnabled(True)
+        if self._active_run_dir is None:
+            return
+        record = RunHistoryRecord.from_run(
+            model,
+            run_id=self._active_run_dir.name,
+            profile_name=self._active_profile_name,
+            slots=self._active_slots,
+            simulated=True,
+        )
+        write_history_record(record, self._active_run_dir)
+        self.history_page.refresh()
 
 
 def build_window(project_root: Path) -> MainWindow:

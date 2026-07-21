@@ -79,6 +79,20 @@ class FillRequestTests(unittest.TestCase):
                 arguments[-3:], ["--start-stage", "home", "--dynamic-garage"]
             )
 
+    def test_supervised_live_arguments_share_output_and_cancel_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = self.make_profile(root)
+            run_dir = root / "run"
+            arguments = controller_arguments(
+                FillRequest(profile=profile, slots=1), Path("project"), run_dir
+            )
+        self.assertEqual(arguments[arguments.index("--output-dir") + 1], str(run_dir))
+        self.assertEqual(
+            arguments[arguments.index("--cancel-file") + 1],
+            str(run_dir / "cancel.requested"),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
