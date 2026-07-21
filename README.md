@@ -122,8 +122,10 @@ python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
 
 The same two suites run automatically on Windows for every pull request and
-every push to `main`. The required status-check name is
-`FleetFill tests / Windows test suite`.
+every push to `main`. CI enforces 126 portable tests; seven calibrated visual
+tests report as skipped because their private ETS2 recording evidence remains
+in ignored local output. The full local run remains 133 tests. The required
+status-check name is `FleetFill tests / Windows test suite`.
 
 Launch the current desktop shell:
 

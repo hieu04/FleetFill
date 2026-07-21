@@ -15,11 +15,17 @@ from ets2_truck_ui_dry_run import (  # noqa: E402
     DEALER_TITLE,
     load_truck_references,
     recognize,
+    truck_reference_paths,
 )
 from ets2_ui_fleet_config_probe import wait_for_loaded_fleet_cards  # noqa: E402
 
 
 class TruckDealerRecognitionTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        if any(not path.is_file() for path in truck_reference_paths().values()):
+            raise unittest.SkipTest("requires local ETS2 recording references")
+
     def test_translucent_background_change_keeps_dealer_map_safe(self) -> None:
         references = load_truck_references()
         pixels = np.asarray(references["dealer_map"]).copy()

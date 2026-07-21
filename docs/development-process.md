@@ -513,8 +513,8 @@ for 133 passing tests, plus the full recorded truck-screen transition suite.
 After the guarded main-profile boundary passed, the repository moved from
 manual-only verification to continuous integration. A Windows GitHub Actions
 workflow now installs FleetFill on Python 3.12 and runs the same two commands
-used during local development: 61 desktop/domain tests followed by 72
-controller/save-audit tests.
+used during local development: 61 desktop/domain tests followed by the
+controller/save-audit suite.
 
 The workflow runs for every pull request, every push to `main`, and manual
 dispatches. It has read-only repository permissions, cancels superseded runs,
@@ -529,3 +529,12 @@ GitHub's Windows temporary directory was presented with an 8.3 short-path user
 segment, while FleetFill deliberately canonicalized the supplied home path.
 Two fixture assertions now compare canonical paths, matching the discovery API
 contract without weakening its profile-identity checks.
+
+The next hosted run exposed the intended boundary between portable tests and
+private visual evidence. Six home-navigation tests and one truck-dealer test
+use ignored ETS2 screenshots under `research/output`; uploading those files to
+CI would violate the repository's evidence policy. Those seven tests now
+declare their local recording dependency and report as skipped when it is
+absent. The branch gate therefore enforces 126 portable tests, while calibrated
+local development continues to enforce all 133 plus the recorded transition
+suite.

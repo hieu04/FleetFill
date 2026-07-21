@@ -25,7 +25,26 @@ from ets2_ui_open_hire_driver_probe import (  # noqa: E402
 )
 
 
+IDLE_REFERENCE = (
+    Path(__file__).resolve().parents[1]
+    / "output"
+    / "live-home-screen-direct-capture"
+    / "direct-capture-20260721-005602-528055.png"
+)
+
+
 class HomeUiTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        required = (
+            HOME_REFERENCE,
+            FLYOUT_REFERENCE,
+            RECRUITMENT_MAP_REFERENCE,
+            IDLE_REFERENCE,
+        )
+        if any(not path.is_file() for path in required):
+            raise unittest.SkipTest("requires local ETS2 recording references")
+
     def test_recognizes_visible_home_navigation(self):
         reference = Image.open(HOME_REFERENCE).convert("RGB")
         result = recognize_home(reference, reference)
@@ -33,14 +52,8 @@ class HomeUiTests(unittest.TestCase):
         self.assertTrue(result["safe_to_open_services"])
 
     def test_rejects_faded_idle_background(self):
-        idle = (
-            Path(__file__).resolve().parents[1]
-            / "output"
-            / "live-home-screen-direct-capture"
-            / "direct-capture-20260721-005602-528055.png"
-        )
         reference = Image.open(HOME_REFERENCE).convert("RGB")
-        result = recognize_home(Image.open(idle).convert("RGB"), reference)
+        result = recognize_home(Image.open(IDLE_REFERENCE).convert("RGB"), reference)
         self.assertEqual(result["state"], "unknown")
         self.assertFalse(result["safe_to_open_services"])
 
