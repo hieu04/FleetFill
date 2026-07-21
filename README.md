@@ -39,6 +39,13 @@ EUR 249,985 deduction, fleet and driver increases from 138 to 139, one paired
 garage slot change, and preservation of all 138 pre-existing truck
 configurations and every unrelated garage.
 
+The graduated desktop boundary then completed a full real 5+5 run. It selected
+an empty Munich garage and filled all five slots through 63 guarded UI steps.
+The independent save audit verified the exact EUR 1,249,925 deduction, truck and
+driver totals increasing from 139 to 144, five unique matching trucks, five
+unique Munich-based drivers, and preservation of all 139 pre-existing truck
+configurations and every unrelated garage.
+
 This is still a calibrated prototype. It should not be treated as compatible
 with other ETS2 versions, resolutions, UI languages, truck cards, or profiles
 until those combinations have their own recognition evidence and tests.
@@ -175,12 +182,11 @@ repository.
 
 ## Project direction
 
-The deliberately small desktop 1+1 validation has passed both its immediate
-runtime checks and independent post-exit save audit. Guarded one-to-five batches
-are now implemented behind a separate disposable-profile live-test launcher;
-the next real gate is a full 5+5 run through that desktop boundary. Main/Steam
-Cloud support remains locked until that audit passes. Packaging and a Windows
-installer follow.
+Guarded one-to-five desktop batches have now passed both immediate runtime
+validation and independent post-exit save audits on the disposable local test
+profile. The next major gate is safe discovery, backup, and active-career proof
+for the Steam Cloud main profile. Normal main-profile input remains locked until
+that boundary is proven. Packaging and a Windows installer follow.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.

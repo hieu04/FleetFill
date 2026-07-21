@@ -366,3 +366,26 @@ for 5+5, and 41 qualifying empty garages.
 The app suite now contains 47 tests and the controller/save-audit suite contains
 58, for 105 passing offline tests. The next user-assisted step is the full 5+5
 desktop test on the disposable profile, followed by a clean-exit save audit.
+
+## 18. Prove the full desktop 5+5 path
+
+The graduated launcher completed its full five-truck/five-driver desktop test
+on the disposable local career. Preflight found EUR 76,287,271 available,
+calculated the exact EUR 1,249,925 batch cost, and identified 40 completely
+empty five-slot garages before allowing input. The controller then completed
+all 63 guarded UI steps and recorded ten of ten intended transactions.
+
+After a normal ETS2 exit, the independent finalizer decoded stable before/after
+autosave copies and passed every semantic check. Money changed from EUR
+76,287,271 to EUR 75,037,346, while company truck and driver totals each changed
+from 139 to 144. Munich changed from five empty paired slots to five occupied
+paired slots. The five trucks had unique IDs and an identical 37-accessory
+configuration, full fuel, and zero odometer. The five hired drivers had unique
+IDs, Munich as both hometown and current city, and were removed from recruitment
+offers.
+
+The audit also compared all 139 pre-existing vehicles and every unrelated garage
+array and found no changes. This proves the intended full batch size on the
+calibrated local profile. The next boundary is safe Steam Cloud/main-profile
+discovery, backup, and active-career validation; that broader input scope remains
+locked until it has equivalent evidence.
