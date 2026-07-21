@@ -7,10 +7,11 @@ garage.
 
 The repository contains the proven automation engine, its research tools, and
 the first functional FleetFill desktop shell. Normal app launches cannot start
-live game input. Separate, visibly armed developer launchers remain restricted
-to the disposable test career. Steam Cloud support currently stops at a proven
-zero-input identity, recovery-snapshot, and company preflight. The Windows
-installer has not been built.
+live game input. Separate, visibly armed developer launchers cover the
+disposable test career, while a tightly restricted one-slot launcher has
+completed its first Steam Cloud main-profile validation. Steam Cloud support
+also includes proven identity, recovery-snapshot, sandbox-restore, and company
+preflights. The Windows installer has not been built.
 
 For the chronological build story, see
 [`docs/development-process.md`](docs/development-process.md).
@@ -44,7 +45,13 @@ The first real Steam Cloud safety preflight has also passed without sending any
 game input. FleetFill proved the exact active cloud career and autosave, copied
 and hash-verified the full authoritative profile, its Documents companion, and
 Steam metadata, then decoded only the copy to prove sufficient money and 45
-eligible empty garages. Main-profile automation remains locked.
+eligible empty garages. Normal main-profile automation remains locked.
+
+That verified snapshot was subsequently reconstructed in an isolated sandbox:
+all 104 cloud files, 9 companion files, and Steam metadata matched byte for
+byte, with no live paths touched. The exact cloud controller preflight also ran
+against a Steam-shaped copy of the snapshot and completed with zero UI steps
+and zero transactions.
 
 The graduated desktop boundary then completed a full real 5+5 run. It selected
 an empty Munich garage and filled all five slots through 63 guarded UI steps.
@@ -78,6 +85,8 @@ memory hook.
    confirm the game persisted exactly the intended company changes.
 8. Steam Cloud careers use a distinct zero-input boundary that snapshots and
    hash-verifies every recovery surface before inspecting only the copied save.
+9. The separately armed main-profile launcher is fixed to one slot and must
+   repeat both the full snapshot and sandbox restore before its countdown.
 
 The controller composes many deliberately small probes rather than placing all
 mouse clicks in one long macro. This makes each transition independently
@@ -91,6 +100,7 @@ research/tools/ets2_ui_*_probe.py         Screen-specific guarded actions
 research/tools/ets2_*_icon_detector.py    Garage and dealer visual detection
 research/tools/verify_*_save.py           Read-only save verification
 research/tools/main_profile_preflight.py  Zero-input Steam Cloud safety proof
+research/tools/rehearse_main_profile_restore.py  Sandbox recovery proof
 research/tools/save-inspector/            BSII save decoding helper
 src/fleetfill/profile_safety.py            Stable cloud snapshot verification
 research/tests/                            Controller and save-audit tests
@@ -110,6 +120,13 @@ python -m pip install --no-deps --editable .
 python -m unittest discover -s tests -p "test_*.py" -v
 python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
+
+The same two suites run automatically on Windows for every pull request and
+every push to `main`. CI enforces 126 portable tests; seven calibrated visual
+tests report as skipped because their private ETS2 recording evidence remains
+in ignored local output. The full local run remains 133 tests. The required
+status-check context is `Windows test suite`, produced by the `FleetFill tests`
+workflow.
 
 Launch the current desktop shell:
 
@@ -153,6 +170,19 @@ metadata, verifies every copied file by SHA-256, and inspects only that copy:
 ```
 
 This command does not move the mouse or unlock the batch controller.
+
+The next developer-only launcher is restricted to exactly one truck and one
+driver on an explicitly named Steam Cloud career:
+
+```powershell
+.\scripts\run-fleetfill-main-validation.ps1 -ProfileName "Your career name"
+```
+
+This path remains an unproven supervised boundary. Before its countdown, the
+controller must create a fresh full snapshot, verify its embedded content
+manifest, reconstruct it in a sandbox, inspect the copied company state, and
+prove sufficient balance plus an empty large garage. Normal FleetFill launches
+still cannot use it.
 
 The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
@@ -207,11 +237,14 @@ repository.
 ## Project direction
 
 Guarded one-to-five desktop batches have passed both runtime and independent
-post-exit save audits on the disposable local profile. Steam Cloud discovery,
-exact active-career proof, complete recovery snapshots, and copied-save company
-inspection have now passed their first real zero-input test. The next gate is a
-separately armed main-profile 1+1 boundary with equivalent runtime and post-exit
-audits. Normal main-profile input remains locked. Packaging follows later.
+post-exit save audits on the disposable local profile. The separately armed
+Steam Cloud main-profile 1+1 has now also passed its first real runtime and
+post-exit semantic audit. It filled one previously empty Valmiera slot while
+preserving all 123 pre-existing trucks, unrelated garages, and the parked World
+of Trucks delivery. The verifier reconciles the batch cost with employee income
+and job fines when ETS2 advances company time during management screens. Normal
+main-profile input remains locked while larger graduated batches are evaluated.
+Packaging follows later.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.

@@ -19,6 +19,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Sequence
 
+from fleetfill.domain import STEAM_CLOUD_PROFILE_STORAGE, ProfileInfo
+from fleetfill.profile_safety import (
+    ProfileSnapshotError,
+    create_steam_cloud_snapshot,
+    rehearse_steam_cloud_restore,
+)
+
 
 TRUCK_PRICE_EUR = 248_485
 DRIVER_HIRE_COST_EUR = 1_500
@@ -265,6 +272,7 @@ def create_preflight_backup(profile: Path, destination: Path) -> dict:
     return {
         "profile": str(profile.resolve()),
         "backup": str(backup.resolve()),
+        "autosave": str((backup / "autosave").resolve()),
         "autosave_files": sorted(path.name for path in (backup / "autosave").iterdir()),
     }
 
@@ -278,6 +286,41 @@ def is_steam_cloud_profile_path(profile: Path) -> bool:
     return parent == "steam_profiles" or (
         parent == "profiles" and grandparent == "remote"
     )
+
+
+def create_steam_cloud_preflight_backup(
+    profile: Path,
+    profile_name: str,
+    documents_companion: Path,
+    steam_metadata: Path,
+    destination: Path,
+) -> dict:
+    """Create and rehearse the complete cloud recovery set before UI input."""
+
+    snapshot = destination / "preflight-recovery-snapshot"
+    profile_info = ProfileInfo(
+        profile_name,
+        profile,
+        storage=STEAM_CLOUD_PROFILE_STORAGE,
+        companion_path=documents_companion,
+        steam_metadata_path=steam_metadata,
+    )
+    snapshot_report = create_steam_cloud_snapshot(profile_info, snapshot)
+    rehearsal = destination / "preflight-restore-rehearsal"
+    rehearsal_report = rehearse_steam_cloud_restore(snapshot, rehearsal)
+    cloud_backup = snapshot / "steam-cloud-profile"
+    return {
+        "profile": str(profile.resolve()),
+        "backup": str(cloud_backup.resolve()),
+        "autosave": str((cloud_backup / "save" / "autosave").resolve()),
+        "recovery_snapshot": str(snapshot.resolve()),
+        "restore_rehearsal": str(rehearsal.resolve()),
+        "snapshot_verified": snapshot_report["verified"],
+        "restore_rehearsal_verified": rehearsal_report["verified"],
+        "autosave_files": sorted(
+            path.name for path in (cloud_backup / "save" / "autosave").iterdir()
+        ),
+    }
 
 
 def validate_company_preflight(company: dict, count: int) -> dict:
@@ -314,7 +357,8 @@ def inspect_preflight_company(
     """Decode only the backup copy and record a read-only company summary."""
 
     inspector = tools_dir / "save-inspector"
-    source = Path(backup["backup"]) / "autosave" / "game.sii"
+    autosave = Path(backup.get("autosave", Path(backup["backup"]) / "autosave"))
+    source = autosave / "game.sii"
     decoded = run_dir / "preflight-company-game.txt"
     report = run_dir / "preflight-company.json"
     commands = [
@@ -676,6 +720,11 @@ def write_checkpoint(
 
 def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument(
+        "--preflight-only",
+        action="store_true",
+        help="Complete recovery and company checks, then exit before countdown or input",
+    )
     parser.add_argument("--garage-label", default="Reims")
     parser.add_argument("--garage-x", type=int)
     parser.add_argument("--garage-y", type=int)
@@ -696,6 +745,10 @@ def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
         type=Path,
         help="Path to the disposable local ETS2 profile used for the safety backup",
     )
+    parser.add_argument("--allow-steam-cloud-validation", action="store_true")
+    parser.add_argument("--profile-name")
+    parser.add_argument("--documents-companion", type=Path)
+    parser.add_argument("--steam-metadata", type=Path)
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument(
         "--cancel-file",
@@ -809,12 +862,32 @@ def run_live(args: argparse.Namespace) -> int:
     if args.profile is None:
         print("BATCH_REFUSED: live phases require an explicit --profile path")
         return 2
-    if is_steam_cloud_profile_path(args.profile):
+    cloud_profile = is_steam_cloud_profile_path(args.profile)
+    cloud_allowed = bool(getattr(args, "allow_steam_cloud_validation", False))
+    if cloud_profile and not cloud_allowed:
         print(
             "BATCH_REFUSED: Steam Cloud profiles require the separate "
             "main-profile safety boundary"
         )
         return 2
+    if cloud_allowed and not cloud_profile:
+        print("BATCH_REFUSED: the Steam Cloud validation flag requires a cloud profile")
+        return 2
+    if cloud_profile:
+        if args.phase != "fill" or args.count != 1:
+            print("BATCH_REFUSED: Steam Cloud validation is limited to one 1+1 fill")
+            return 2
+        missing_cloud_args = [
+            name
+            for name in ("profile_name", "documents_companion", "steam_metadata")
+            if getattr(args, name, None) in (None, "")
+        ]
+        if missing_cloud_args:
+            print(
+                "BATCH_REFUSED: Steam Cloud validation is missing "
+                + ", ".join(missing_cloud_args)
+            )
+            return 2
     if args.count < 1:
         print("BATCH_REFUSED: --count must be at least one")
         return 2
@@ -870,7 +943,20 @@ def run_live(args: argparse.Namespace) -> int:
     except BatchCancelled as error:
         print(f"BATCH_CANCELLED: {error}")
         return 2
-    backup = create_preflight_backup(args.profile.resolve(), run_dir)
+    try:
+        if cloud_profile:
+            backup = create_steam_cloud_preflight_backup(
+                args.profile.resolve(),
+                args.profile_name,
+                args.documents_companion.resolve(),
+                args.steam_metadata.resolve(),
+                run_dir,
+            )
+        else:
+            backup = create_preflight_backup(args.profile.resolve(), run_dir)
+    except (BatchAbort, ProfileSnapshotError, OSError) as error:
+        print(f"BATCH_ABORTED: recovery backup failed before input: {error}")
+        return 1
     preflight_payload = {
         "phase": args.phase,
         "initial_state": asdict(state),
@@ -903,6 +989,11 @@ def run_live(args: argparse.Namespace) -> int:
     (run_dir / "preflight.json").write_text(
         json.dumps(preflight_payload, indent=2), encoding="utf-8"
     )
+    if args.preflight_only:
+        report = write_checkpoint(runner, "preflight_completed", args.phase, state, args)
+        print("BATCH_PREFLIGHT_SUCCEEDED: recovery and company checks passed; no input sent")
+        print(f"BATCH_REPORT: {report.resolve()}")
+        return 0
     write_checkpoint(runner, "ready", args.phase, state, args)
     print(
         f"BATCH_READY: {args.phase} phase begins in {args.start_delay:.1f}s; "

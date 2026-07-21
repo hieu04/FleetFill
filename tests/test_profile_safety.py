@@ -5,7 +5,11 @@ import unittest
 from pathlib import Path
 
 from fleetfill.domain import STEAM_CLOUD_PROFILE_STORAGE, ProfileInfo
-from fleetfill.profile_safety import ProfileSnapshotError, create_steam_cloud_snapshot
+from fleetfill.profile_safety import (
+    ProfileSnapshotError,
+    create_steam_cloud_snapshot,
+    rehearse_steam_cloud_restore,
+)
 
 
 class SteamCloudSnapshotTests(unittest.TestCase):
@@ -55,6 +59,51 @@ class SteamCloudSnapshotTests(unittest.TestCase):
                 "metadata",
             )
             self.assertTrue((destination / "snapshot-report.json").is_file())
+            self.assertTrue((destination / "snapshot-manifest.json").is_file())
+
+    def test_rehearses_complete_restore_only_into_new_sandbox(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = self.make_profile(root)
+            snapshot = root / "snapshot"
+            create_steam_cloud_snapshot(profile, snapshot)
+
+            report = rehearse_steam_cloud_restore(snapshot, root / "sandbox")
+
+            self.assertTrue(report["verified"])
+            self.assertTrue(report["embedded_manifest"])
+            self.assertFalse(report["live_paths_touched"])
+            self.assertEqual(report["cloud_files"], 4)
+            self.assertEqual(
+                (root / "sandbox" / "authoritative-profile" / "save" / "manual" / "game.sii").read_text(),
+                "manual",
+            )
+
+    def test_restore_rehearsal_rejects_snapshot_tampering(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = self.make_profile(root)
+            snapshot = root / "snapshot"
+            create_steam_cloud_snapshot(profile, snapshot)
+            (snapshot / "steam-cloud-profile" / "profile.sii").write_text(
+                "tampered",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ProfileSnapshotError, "no longer matches"):
+                rehearse_steam_cloud_restore(snapshot, root / "sandbox")
+
+    def test_restore_rehearsal_refuses_existing_destination(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = self.make_profile(root)
+            snapshot = root / "snapshot"
+            create_steam_cloud_snapshot(profile, snapshot)
+            sandbox = root / "sandbox"
+            sandbox.mkdir()
+
+            with self.assertRaisesRegex(ProfileSnapshotError, "already exists"):
+                rehearse_steam_cloud_restore(snapshot, sandbox)
 
     def test_refuses_local_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

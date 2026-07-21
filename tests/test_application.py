@@ -19,9 +19,21 @@ class ApplicationArgumentsTests(unittest.TestCase):
         self.assertTrue(args.live_test)
         self.assertFalse(args.live_validation)
 
+    def test_main_profile_validation_requires_an_explicit_career_name(self) -> None:
+        args = build_parser().parse_args(
+            ["--main-profile-validation", "Primary Career"]
+        )
+        self.assertEqual(args.main_profile_validation, "Primary Career")
+        self.assertFalse(args.live_validation)
+        self.assertFalse(args.live_test)
+
     def test_live_development_modes_are_mutually_exclusive(self) -> None:
         with self.assertRaises(SystemExit):
             build_parser().parse_args(["--live-test", "--live-validation"])
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(
+                ["--live-test", "--main-profile-validation", "Primary Career"]
+            )
 
 
 if __name__ == "__main__":

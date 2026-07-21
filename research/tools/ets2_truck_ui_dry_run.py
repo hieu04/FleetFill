@@ -107,15 +107,38 @@ def selected_brand(image: Image.Image) -> str | None:
     return best if scores[best] >= 400 else None
 
 
+def yellow_pixel_count(
+    image: Image.Image, box: tuple[int, int, int, int]
+) -> int:
+    rgb = np.asarray(image.crop(box).convert("RGB"), dtype=np.int16)
+    yellow = (
+        (rgb[:, :, 0] > 135)
+        & (rgb[:, :, 1] > 75)
+        & (rgb[:, :, 1] < 210)
+        & (rgb[:, :, 2] < 90)
+        & ((rgb[:, :, 0] - rgb[:, :, 1]) > 20)
+    )
+    return int(yellow.sum())
+
+
 def dealer_integrity(image: Image.Image) -> dict:
     map_std = float(np.asarray(image.crop(DEALER_MAP).convert("L"), dtype=np.float32).std())
     brand_std = float(
         np.asarray(image.crop((128, 108, 275, 725)).convert("L"), dtype=np.float32).std()
     )
+    title_yellow = yellow_pixel_count(image, DEALER_TITLE)
+    brand = selected_brand(image)
     return {
-        "complete": map_std >= 17.5 and brand_std >= 20.0,
+        # The map is translucent, so the parked truck can substantially alter
+        # reference-image distance. These UI-owned features remain stable.
+        "complete": map_std >= 17.5
+        and brand_std >= 20.0
+        and title_yellow >= 250
+        and brand is not None,
         "map_standard_deviation": round(map_std, 2),
         "brand_rail_standard_deviation": round(brand_std, 2),
+        "title_yellow_pixels": title_yellow,
+        "selected_brand": brand,
     }
 
 
@@ -214,6 +237,9 @@ def recognize(image: Image.Image, references: dict[str, Image.Image]) -> dict:
     best_name, best_distance = ordered[0]
     margin = ordered[1][1] - best_distance
     state = best_name if best_distance <= 0.44 and margin >= 0.06 else "unknown"
+    dealer_structure = dealer_integrity(image)
+    if state == "unknown" and dealer_structure["complete"]:
+        state = "dealer_map"
     result = {
         "state": state,
         "resolution": list(image.size),
@@ -224,7 +250,7 @@ def recognize(image: Image.Image, references: dict[str, Image.Image]) -> dict:
 
     if state == "dealer_map":
         result["selected_brand"] = selected_brand(image)
-        result["visual_integrity"] = dealer_integrity(image)
+        result["visual_integrity"] = dealer_structure
         result["next_safe_observation"] = "Detect dealer markers; do not click Buy online"
     elif state == "truck_purchase":
         result["visual_integrity"] = purchase_integrity(image)

@@ -294,10 +294,43 @@ def validate_graduated_live_request(
     return errors
 
 
+def validate_main_profile_validation_request(
+    request: FillRequest,
+    profile: ProfileInfo,
+    *,
+    enabled: bool,
+    expected_profile_name: str | None,
+) -> list[str]:
+    """Gate the separately armed, exactly-one-slot Steam Cloud validation."""
+
+    errors = validate_request(request)
+    if not enabled or not expected_profile_name:
+        errors.append("The main-profile validation launcher is not armed.")
+    if request.slots != 1:
+        errors.append("Main-profile validation is limited to exactly one truck and one driver.")
+    if not profile.is_steam_cloud:
+        errors.append("Main-profile validation requires an authoritative Steam Cloud profile.")
+    if expected_profile_name and profile.name != expected_profile_name:
+        errors.append(
+            f"Main-profile validation requires the '{expected_profile_name}' career."
+        )
+    if profile.documents_root is None:
+        errors.append("The ETS2 Documents root for the cloud career is missing.")
+    if profile.companion_path is None or not profile.companion_path.is_dir():
+        errors.append("The Documents-side Steam profile companion is missing.")
+    if profile.steam_metadata_path is None or not profile.steam_metadata_path.is_file():
+        errors.append("Steam remotecache.vdf metadata is missing.")
+    if request.profile is not None and profile.path.resolve() != request.profile.resolve():
+        errors.append("The reviewed cloud profile does not match the selected folder.")
+    return errors
+
+
 def controller_arguments(
     request: FillRequest,
     project_root: Path,
     output_dir: Path | None = None,
+    *,
+    steam_cloud_profile: ProfileInfo | None = None,
 ) -> list[str]:
     """Return the currently supported guarded controller invocation."""
 
@@ -334,11 +367,42 @@ def controller_arguments(
                 str(output_dir / "cancel.requested"),
             ]
         )
+    if steam_cloud_profile is not None:
+        if not steam_cloud_profile.is_steam_cloud:
+            raise ValueError("Steam Cloud controller arguments require a cloud profile")
+        if steam_cloud_profile.path.resolve() != request.profile.resolve():
+            raise ValueError("The Steam Cloud profile does not match the request")
+        if steam_cloud_profile.companion_path is None:
+            raise ValueError("The Steam Cloud Documents companion is required")
+        if steam_cloud_profile.steam_metadata_path is None:
+            raise ValueError("Steam remotecache.vdf is required")
+        arguments.extend(
+            [
+                "--allow-steam-cloud-validation",
+                "--profile-name",
+                steam_cloud_profile.name,
+                "--documents-companion",
+                str(steam_cloud_profile.companion_path),
+                "--steam-metadata",
+                str(steam_cloud_profile.steam_metadata_path),
+            ]
+        )
     return arguments
 
 
-def controller_command_preview(request: FillRequest, project_root: Path) -> str:
-    return subprocess.list2cmdline(controller_arguments(request, project_root))
+def controller_command_preview(
+    request: FillRequest,
+    project_root: Path,
+    *,
+    steam_cloud_profile: ProfileInfo | None = None,
+) -> str:
+    return subprocess.list2cmdline(
+        controller_arguments(
+            request,
+            project_root,
+            steam_cloud_profile=steam_cloud_profile,
+        )
+    )
 
 
 def simulator_arguments(

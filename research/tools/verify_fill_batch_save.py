@@ -3,12 +3,195 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 from pathlib import Path
 
 from verify_hire_save import array, find_owner, find_unit, parse_units, scalar
 from verify_driver_truck_pair_save import accessory_paths
 from verify_truck_batch_save import vehicle_details
+
+
+PLAYER_DELIVERY_SCALARS = (
+    "my_vehicles_mode",
+    "assigned_vehicles_mode",
+    "truck_placement",
+    "trailer_placement",
+    "assigned_trailer_connected",
+    "my_truck_placement",
+    "my_truck_placement_valid",
+    "my_trailer_placement",
+    "my_trailer_attached",
+    "my_trailer_used",
+)
+PLAYER_DELIVERY_REFERENCES = (
+    "current_job",
+    "current_bus_job",
+    "selected_job",
+    "assigned_truck",
+    "assigned_trailer",
+    "my_truck",
+    "my_trailer",
+)
+NAMELESS_ID_PATTERN = re.compile(r"_nameless(?:\.[0-9a-f]+)+", re.IGNORECASE)
+
+
+def canonicalize_nameless_ids(text: str) -> str:
+    """Replace volatile SII object IDs while preserving reference relationships."""
+
+    replacements: dict[str, str] = {}
+
+    def replace(match: re.Match[str]) -> str:
+        value = match.group(0)
+        if value not in replacements:
+            replacements[value] = f"<nameless:{len(replacements)}>"
+        return replacements[value]
+
+    return NAMELESS_ID_PATTERN.sub(replace, text)
+
+
+def referenced_unit_signature(
+    units: list[tuple[str, str, str]], reference: str
+) -> dict[str, str] | None:
+    if reference == "null":
+        return None
+    for unit_type, unit_id, body in units:
+        if unit_id == reference:
+            return {
+                "unit_type": unit_type,
+                "body": canonicalize_nameless_ids(body),
+            }
+    raise ValueError(f"Missing referenced delivery unit {reference!r}")
+
+
+def active_delivery_state(
+    units: list[tuple[str, str, str]],
+) -> dict[str, object]:
+    """Build a stable description of the player's active delivery and vehicle."""
+
+    _economy_type, _economy_id, economy = find_owner(
+        units, "stored_online_job_id"
+    )
+    _player_type, _player_id, player = find_owner(units, "current_job")
+    online_job_id = scalar(economy, "stored_online_job_id")
+    current_job = scalar(player, "current_job")
+    active_kind = (
+        "world_of_trucks"
+        if online_job_id != "0"
+        else "local"
+        if current_job != "null"
+        else "none"
+    )
+    return {
+        "active_kind": active_kind,
+        "online_job_id": online_job_id,
+        "player": {
+            name: scalar(player, name) for name in PLAYER_DELIVERY_SCALARS
+        },
+        "references": {
+            name: referenced_unit_signature(units, scalar(player, name))
+            for name in PLAYER_DELIVERY_REFERENCES
+        },
+    }
+
+
+def active_delivery_summary(state: dict[str, object]) -> dict[str, object]:
+    encoded = json.dumps(state, sort_keys=True, separators=(",", ":")).encode()
+    references = state["references"]
+    assert isinstance(references, dict)
+    return {
+        "active_kind": state["active_kind"],
+        "online_job_id": state["online_job_id"],
+        "referenced_unit_types": {
+            name: value["unit_type"] if value else None
+            for name, value in references.items()
+        },
+        "sha256": hashlib.sha256(encoded).hexdigest(),
+    }
+
+
+def active_delivery_preserved(
+    before: dict[str, object], after: dict[str, object]
+) -> bool:
+    """Accept stable local jobs and ETS2's online-job materialization transition."""
+
+    if before == after:
+        return True
+    if not (
+        before["active_kind"] == after["active_kind"] == "world_of_trucks"
+    ):
+        return False
+    if before["player"] != after["player"]:
+        return False
+    before_refs = before["references"]
+    after_refs = after["references"]
+    assert isinstance(before_refs, dict) and isinstance(after_refs, dict)
+    for name in PLAYER_DELIVERY_REFERENCES:
+        if name == "current_job":
+            continue
+        if before_refs[name] != after_refs[name]:
+            return False
+
+    before_job = before_refs["current_job"]
+    after_job = after_refs["current_job"]
+    if before_job is None and after_job is None:
+        return True
+    if before_job is None and after_job is not None:
+        body = after_job["body"]
+        return (
+            after_job["unit_type"] == "player_job"
+            and re.search(r"(?m)^ online_job_id: (\d+)$", body) is not None
+            and re.search(r"(?m)^ is_trailer_loaded: true$", body) is not None
+        )
+    if before_job is None or after_job is None:
+        return False
+
+    def without_online_id(job: dict[str, str]) -> dict[str, str]:
+        return {
+            "unit_type": job["unit_type"],
+            "body": re.sub(
+                r"(?m)^ online_job_id: \d+$",
+                " online_job_id: <online>",
+                job["body"],
+            ),
+        }
+
+    return without_online_id(before_job) == without_online_id(after_job)
+
+
+def profit_entry_net(body: str) -> int:
+    return (
+        int(scalar(body, "revenue"))
+        - int(scalar(body, "wage"))
+        - int(scalar(body, "maintenance"))
+        - int(scalar(body, "fuel"))
+    )
+
+
+def unique_new_profit_events(
+    old_units: list[tuple[str, str, str]],
+    new_units: list[tuple[str, str, str]],
+) -> list[str]:
+    """Return semantic employee jobs added while ETS2 advanced company time."""
+
+    old_entries = {
+        body for unit_type, _unit_id, body in old_units if unit_type == "profit_log_entry"
+    }
+    new_entries = {
+        body for unit_type, _unit_id, body in new_units if unit_type == "profit_log_entry"
+    }
+    return sorted(new_entries - old_entries)
+
+
+def active_job_fines(state: dict[str, object]) -> int:
+    references = state["references"]
+    assert isinstance(references, dict)
+    job = references["current_job"]
+    if job is None:
+        return 0
+    match = re.search(r"(?m)^ total_fines: (\d+)$", job["body"])
+    return int(match.group(1)) if match else 0
 
 
 def garage_arrays(units: list[tuple[str, str, str]]) -> dict[str, dict[str, list[str]]]:
@@ -59,6 +242,8 @@ def main() -> int:
 
     old_units = parse_units(args.old.read_text(encoding="utf-8", errors="replace"))
     new_units = parse_units(args.new.read_text(encoding="utf-8", errors="replace"))
+    old_delivery = active_delivery_state(old_units)
+    new_delivery = active_delivery_state(new_units)
     _old_bank_type, _old_bank_id, old_bank = find_owner(old_units, "money_account")
     _new_bank_type, _new_bank_id, new_bank = find_owner(new_units, "money_account")
     _old_player_type, _old_player_id, old_player = find_owner(old_units, "trucks")
@@ -68,6 +253,22 @@ def main() -> int:
 
     old_money = int(scalar(old_bank, "money_account"))
     new_money = int(scalar(new_bank, "money_account"))
+    _old_economy_type, _old_economy_id, old_economy = find_owner(
+        old_units, "trucks_bought_online"
+    )
+    _new_economy_type, _new_economy_id, new_economy = find_owner(
+        new_units, "trucks_bought_online"
+    )
+    old_online_purchases = int(scalar(old_economy, "trucks_bought_online"))
+    new_online_purchases = int(scalar(new_economy, "trucks_bought_online"))
+    new_profit_events = unique_new_profit_events(old_units, new_units)
+    employee_profit = sum(profit_entry_net(body) for body in new_profit_events)
+    newly_booked_fines = max(
+        0, active_job_fines(new_delivery) - active_job_fines(old_delivery)
+    )
+    reconciled_balance = (
+        old_money - args.expected_cost + employee_profit - newly_booked_fines
+    )
     old_trucks = array(old_player, "trucks")
     new_trucks = array(new_player, "trucks")
     old_drivers = array(old_player, "drivers")
@@ -140,7 +341,12 @@ def main() -> int:
                 preexisting_vehicle_configs_preserved = False
 
     checks = {
-        "money_deducted_exactly": old_money - new_money == args.expected_cost,
+        "active_delivery_and_vehicle_preserved": active_delivery_preserved(
+            old_delivery, new_delivery
+        ),
+        "company_balance_reconciled": new_money == reconciled_balance,
+        "online_truck_purchase_counter_increased": new_online_purchases
+        == old_online_purchases + args.count,
         "company_truck_count_increased": len(new_trucks) == len(old_trucks) + args.count,
         "company_driver_count_increased": len(new_drivers) == len(old_drivers) + args.count,
         "exactly_one_garage_changed": len(changed) == 1,
@@ -204,6 +410,15 @@ def main() -> int:
             "before": old_money,
             "after": new_money,
             "deducted": old_money - new_money,
+            "batch_cost": args.expected_cost,
+            "employee_profit_during_run": employee_profit,
+            "newly_booked_active_job_fines": newly_booked_fines,
+            "reconciled_after": reconciled_balance,
+        },
+        "new_employee_profit_events": len(new_profit_events),
+        "online_truck_purchases": {
+            "before": old_online_purchases,
+            "after": new_online_purchases,
         },
         "company_trucks": {"before": len(old_trucks), "after": len(new_trucks)},
         "company_drivers": {"before": len(old_drivers), "after": len(new_drivers)},
@@ -213,6 +428,10 @@ def main() -> int:
         "new_trucks": vehicles,
         "new_drivers": drivers,
         "preexisting_vehicles_compared": compared_preexisting_vehicles,
+        "active_delivery": {
+            "before": active_delivery_summary(old_delivery),
+            "after": active_delivery_summary(new_delivery),
+        },
         "source_files": {
             "before": str(args.old.resolve()),
             "after": str(args.new.resolve()),

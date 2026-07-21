@@ -421,3 +421,121 @@ batch controller now explicitly refuses Steam Cloud profile paths. The full
 offline suite contains 54 desktop/domain tests and 59 controller/save tests, for
 113 passing tests. Main-profile live input remains locked until a separate 1+1
 launcher and equivalent post-exit audit boundary are reviewed.
+
+## 20. Rehearse recovery and isolate the main-profile 1+1 gate
+
+A backup is not proven merely because it can be copied. FleetFill now writes a
+snapshot content manifest containing the relative path, size, and SHA-256 of
+every authoritative profile and Documents companion file plus Steam metadata.
+The recovery rehearsal accepts only a snapshot whose creation report passed,
+refuses an existing destination, verifies the snapshot against its embedded
+manifest, reconstructs all three surfaces in a new sandbox, and hashes the
+result independently. It has no operation that overwrites a live Steam path.
+
+The first rehearsal used the verified real main-profile snapshot from the
+zero-input milestone. It reconstructed all 104 cloud files, 9 companion files,
+and the metadata file byte for byte while recording `live_paths_touched: false`.
+The older snapshot predated embedded manifests, so the rehearsal derived its
+expected hashes from that already verified copy; all future snapshots embed the
+manifest directly.
+
+The controller gained a `--preflight-only` mode to exercise the exact recovery
+and company path without reaching its countdown. A Steam-shaped isolated copy
+of the real snapshot passed the fresh snapshot, sandbox restore, EUR 249,985
+1+1 affordability, and 45-empty-garage checks. The resulting checkpoint had
+status `preflight_completed`, zero completed transactions, and zero UI steps.
+
+Finally, the desktop now has a separate named Steam Cloud validation mode. It
+forces one slot, disables browsing, requires the exact discovered cloud career
+and loaded autosave, passes every recovery surface explicitly to the controller,
+and carries a cloud flag that the controller accepts only for one unified 1+1
+fill. Normal, local 1+1, and disposable one-to-five launchers cannot cross this
+policy accidentally. Runtime validation and the post-exit finalizer now use an
+explicit autosave evidence path so both local and full cloud snapshot layouts
+resolve correctly.
+
+The first active-trip baseline exposed an important distinction: a World of
+Trucks contract has `current_job: null` in the local player unit and is instead
+represented by a nonzero `stored_online_job_id` in the economy unit. The batch
+save verifier now handles both online and ordinary local jobs. It fingerprints
+the active job object, assigned truck and trailer objects, connection state, and
+parked placements while canonicalizing volatile `_nameless` identifiers. This
+makes a changed cargo/job/vehicle state fail the audit without treating a normal
+save-time ID regeneration as damage.
+
+The offline suite at this boundary contained 61 desktop/domain tests and 66
+controller/save tests. A zero-input snapshot of the parked main profile
+correctly identified its active World of Trucks contract and passed the new
+fingerprint path.
+
+## 21. Certify the first real main-profile 1+1
+
+The first two attempts demonstrated the value of stopping before transactions.
+The first reached the dealer map but rejected it because the main profile's
+bright custom truck showed through the translucent map and exceeded a
+recording-distance threshold. The recognizer was changed to require UI-owned
+structure instead: the dealer title, selected brand, brand rail, and rendered
+map. The second attempt reached My Fleet Configurations but captured its four
+cards while they were still gray loading placeholders. That fixed delay became
+read-only polling with a hard timeout. Both attempts recorded zero purchases and
+zero hires.
+
+The third supervised run completed all guarded steps and reported two of two
+transactions. Its independent post-exit audit proved that Valmiera changed from
+five empty paired slots to one paired truck/driver slot. The new Scania
+Streamline had the expected 37-accessory configuration, full fuel, zero
+odometer, and a Latvian plate. The new driver had Valmiera as both hometown and
+current city and was removed from recruitment offers. All 123 pre-existing
+truck configurations and every unrelated garage remained unchanged.
+
+The audit also corrected two assumptions that do not hold for a large active
+company. ETS2 advanced game time in the management workflow, allowing nine
+semantic employee jobs to add EUR 136,883 and booking EUR 2,160 of active-job
+fines. The final balance therefore reconciled exactly as EUR 82,153,204 minus
+the EUR 249,985 batch, plus employee profit, minus fines: EUR 82,037,942. The
+online truck-purchase counter independently increased from 130 to 131.
+
+Finally, ETS2 saved the World of Trucks contract differently after the run. The
+preflight copy held a nonzero online job ID with `current_job: null`; the clean
+exit materialized a `player_job` and refreshed that ID. The captured pre-run
+home screen and post-run job object both identify the same Volvo A25G cargo from
+Utena to Naples. Truck and trailer placements were bit-for-bit identical, the
+trailer stayed connected and loaded, and cargo damage remained zero. The
+verifier now recognizes this safe online-job materialization while still
+rejecting moved vehicles, detached trailers, lost jobs, or changed local-job
+objects.
+
+The completed boundary has 61 desktop/domain tests and 72 controller/save tests,
+for 133 passing tests, plus the full recorded truck-screen transition suite.
+
+## 22. Put the proven suites behind the main-branch gate
+
+After the guarded main-profile boundary passed, the repository moved from
+manual-only verification to continuous integration. A Windows GitHub Actions
+workflow now installs FleetFill on Python 3.12 and runs the same two commands
+used during local development: 61 desktop/domain tests followed by the
+controller/save-audit suite.
+
+The workflow runs for every pull request, every push to `main`, and manual
+dispatches. It has read-only repository permissions, cancels superseded runs,
+and exposes one stable branch-protection context named `Windows test suite`
+under the `FleetFill tests` workflow. The active `Protect main` ruleset now
+requires that check without requiring the branch to be retested against every
+new `main` commit. Recorded UI transitions remain a separate hardware-calibrated
+validation because they depend on the real ETS2 fullscreen environment and must
+not run on a generic hosted worker.
+
+The first hosted run also added a portability regression test to the gate.
+GitHub's Windows temporary directory was presented with an 8.3 short-path user
+segment, while FleetFill deliberately canonicalized the supplied home path.
+Two fixture assertions now compare canonical paths, matching the discovery API
+contract without weakening its profile-identity checks.
+
+The next hosted run exposed the intended boundary between portable tests and
+private visual evidence. Six home-navigation tests and one truck-dealer test
+use ignored ETS2 screenshots under `research/output`; uploading those files to
+CI would violate the repository's evidence policy. Those seven tests now
+declare their local recording dependency and report as skipped when it is
+absent. The branch gate therefore enforces 126 portable tests, while calibrated
+local development continues to enforce all 133 plus the recorded transition
+suite. The corrected hosted run passed with 126 tests and seven declared skips.
