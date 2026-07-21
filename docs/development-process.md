@@ -507,3 +507,19 @@ objects.
 
 The completed boundary has 61 desktop/domain tests and 72 controller/save tests,
 for 133 passing tests, plus the full recorded truck-screen transition suite.
+
+## 22. Put the proven suites behind the main-branch gate
+
+After the guarded main-profile boundary passed, the repository moved from
+manual-only verification to continuous integration. A Windows GitHub Actions
+workflow now installs FleetFill on Python 3.12 and runs the same two commands
+used during local development: 61 desktop/domain tests followed by 72
+controller/save-audit tests.
+
+The workflow runs for every pull request, every push to `main`, and manual
+dispatches. It has read-only repository permissions, cancels superseded runs,
+and exposes one stable branch-protection check named
+`FleetFill tests / Windows test suite`. The ruleset can require that check once
+its first GitHub-hosted run succeeds. Recorded UI transitions remain a separate
+hardware-calibrated validation because they depend on the real ETS2 fullscreen
+environment and must not run on a generic hosted worker.

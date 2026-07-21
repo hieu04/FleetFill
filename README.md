@@ -7,11 +7,11 @@ garage.
 
 The repository contains the proven automation engine, its research tools, and
 the first functional FleetFill desktop shell. Normal app launches cannot start
-live game input. Separate, visibly armed developer launchers remain restricted
-to the disposable test career. Steam Cloud support now includes proven
-zero-input identity, recovery-snapshot, sandbox-restore, and company preflights.
-A separate one-slot main-profile launcher is implemented but has not completed
-its first real transaction. The Windows installer has not been built.
+live game input. Separate, visibly armed developer launchers cover the
+disposable test career, while a tightly restricted one-slot launcher has
+completed its first Steam Cloud main-profile validation. Steam Cloud support
+also includes proven identity, recovery-snapshot, sandbox-restore, and company
+preflights. The Windows installer has not been built.
 
 For the chronological build story, see
 [`docs/development-process.md`](docs/development-process.md).
@@ -120,6 +120,10 @@ python -m pip install --no-deps --editable .
 python -m unittest discover -s tests -p "test_*.py" -v
 python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
+
+The same two suites run automatically on Windows for every pull request and
+every push to `main`. The required status-check name is
+`FleetFill tests / Windows test suite`.
 
 Launch the current desktop shell:
 
