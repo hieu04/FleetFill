@@ -41,7 +41,10 @@ class ProfileDiscoveryTests(unittest.TestCase):
 
             found = discover_local_profiles(home=home, environ={})
 
-            self.assertEqual([(item.name, item.path) for item in found], [("Test", profile)])
+            self.assertEqual(
+                [(item.name, item.path) for item in found],
+                [("Test", profile.resolve())],
+            )
 
     def test_discovers_authoritative_steam_cloud_profile_and_companion(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -69,8 +72,8 @@ class ProfileDiscoveryTests(unittest.TestCase):
             self.assertEqual(found[0].name, "Primary Career")
             self.assertEqual(found[0].path, profile)
             self.assertEqual(found[0].storage, STEAM_CLOUD_PROFILE_STORAGE)
-            self.assertEqual(found[0].documents_root, documents)
-            self.assertEqual(found[0].companion_path, companion)
+            self.assertEqual(found[0].documents_root, documents.resolve())
+            self.assertEqual(found[0].companion_path, companion.resolve())
             self.assertEqual(found[0].steam_metadata_path, app / "remotecache.vdf")
 
 

@@ -523,3 +523,9 @@ and exposes one stable branch-protection check named
 its first GitHub-hosted run succeeds. Recorded UI transitions remain a separate
 hardware-calibrated validation because they depend on the real ETS2 fullscreen
 environment and must not run on a generic hosted worker.
+
+The first hosted run also added a portability regression test to the gate.
+GitHub's Windows temporary directory was presented with an 8.3 short-path user
+segment, while FleetFill deliberately canonicalized the supplied home path.
+Two fixture assertions now compare canonical paths, matching the discovery API
+contract without weakening its profile-identity checks.
