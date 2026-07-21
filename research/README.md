@@ -137,6 +137,18 @@ The controller repeats the full snapshot and restore rehearsal before company
 inspection and countdown. `--preflight-only` exercises this exact path and exits
 before any UI probe.
 
+The post-exit fill verifier also requires the active delivery state to match the
+preflight copy. Ordinary jobs are verified through their referenced job unit;
+World of Trucks contracts are identified by `stored_online_job_id`. Assigned
+truck/trailer objects, attachment state, and parked placements are included in
+the fingerprint. The verifier also accepts ETS2's observed save-time transition
+from an online-only contract to a materialized `player_job`, provided the online
+job remains active and every parked vehicle field is unchanged.
+
+Company balances are reconciled rather than assumed to be otherwise frozen.
+FleetFill verifies the batch cost and online-purchase counter, then accounts for
+new semantic employee profit events and newly booked active-job fines.
+
 ## Read-only save inspection
 
 `tools/decrypt_scs_file.py` turns an encrypted `ScsC` SII file into a separate

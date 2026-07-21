@@ -454,7 +454,56 @@ policy accidentally. Runtime validation and the post-exit finalizer now use an
 explicit autosave evidence path so both local and full cloud snapshot layouts
 resolve correctly.
 
-The offline suite now contains 61 desktop/domain tests and 63 controller/save
-tests, for 124 passing tests. The main-profile launcher is implemented but has
-not yet performed a real transaction; that remains a separately supervised
-milestone requiring the operator to stop driving and explicitly arm the run.
+The first active-trip baseline exposed an important distinction: a World of
+Trucks contract has `current_job: null` in the local player unit and is instead
+represented by a nonzero `stored_online_job_id` in the economy unit. The batch
+save verifier now handles both online and ordinary local jobs. It fingerprints
+the active job object, assigned truck and trailer objects, connection state, and
+parked placements while canonicalizing volatile `_nameless` identifiers. This
+makes a changed cargo/job/vehicle state fail the audit without treating a normal
+save-time ID regeneration as damage.
+
+The offline suite at this boundary contained 61 desktop/domain tests and 66
+controller/save tests. A zero-input snapshot of the parked main profile
+correctly identified its active World of Trucks contract and passed the new
+fingerprint path.
+
+## 21. Certify the first real main-profile 1+1
+
+The first two attempts demonstrated the value of stopping before transactions.
+The first reached the dealer map but rejected it because the main profile's
+bright custom truck showed through the translucent map and exceeded a
+recording-distance threshold. The recognizer was changed to require UI-owned
+structure instead: the dealer title, selected brand, brand rail, and rendered
+map. The second attempt reached My Fleet Configurations but captured its four
+cards while they were still gray loading placeholders. That fixed delay became
+read-only polling with a hard timeout. Both attempts recorded zero purchases and
+zero hires.
+
+The third supervised run completed all guarded steps and reported two of two
+transactions. Its independent post-exit audit proved that Valmiera changed from
+five empty paired slots to one paired truck/driver slot. The new Scania
+Streamline had the expected 37-accessory configuration, full fuel, zero
+odometer, and a Latvian plate. The new driver had Valmiera as both hometown and
+current city and was removed from recruitment offers. All 123 pre-existing
+truck configurations and every unrelated garage remained unchanged.
+
+The audit also corrected two assumptions that do not hold for a large active
+company. ETS2 advanced game time in the management workflow, allowing nine
+semantic employee jobs to add EUR 136,883 and booking EUR 2,160 of active-job
+fines. The final balance therefore reconciled exactly as EUR 82,153,204 minus
+the EUR 249,985 batch, plus employee profit, minus fines: EUR 82,037,942. The
+online truck-purchase counter independently increased from 130 to 131.
+
+Finally, ETS2 saved the World of Trucks contract differently after the run. The
+preflight copy held a nonzero online job ID with `current_job: null`; the clean
+exit materialized a `player_job` and refreshed that ID. The captured pre-run
+home screen and post-run job object both identify the same Volvo A25G cargo from
+Utena to Naples. Truck and trailer placements were bit-for-bit identical, the
+trailer stayed connected and loaded, and cargo damage remained zero. The
+verifier now recognizes this safe online-job materialization while still
+rejecting moved vehicles, detached trailers, lost jobs, or changed local-job
+objects.
+
+The completed boundary has 61 desktop/domain tests and 72 controller/save tests,
+for 133 passing tests, plus the full recorded truck-screen transition suite.

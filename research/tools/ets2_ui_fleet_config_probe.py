@@ -7,6 +7,7 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Callable, TypeVar
 
 from PIL import Image
 
@@ -26,6 +27,7 @@ MODE_TEXT_BOX = (230, 118, 546, 154)
 DROPDOWN_ARROW = (547, 118, 583, 154)
 DROPDOWN_MENU = (230, 155, 583, 232)
 FLEET_OPTION = (230, 193, 583, 232)
+CaptureResult = TypeVar("CaptureResult")
 
 
 def center(box: tuple[int, int, int, int]) -> tuple[int, int]:
@@ -47,10 +49,36 @@ def dropdown_is_open(image: Image.Image) -> bool:
     return upper_is_blue_grey and lower_is_dark_grey
 
 
+def wait_for_loaded_fleet_cards(
+    capture: Callable[[], CaptureResult],
+    result_from: Callable[[CaptureResult], dict],
+    *,
+    timeout: float,
+    interval: float = 0.5,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], None] = time.sleep,
+) -> tuple[CaptureResult, int]:
+    """Poll captures until rendered fleet cards pass the read-only integrity gate."""
+
+    deadline = clock() + timeout
+    attempts = 0
+    while True:
+        sample = capture()
+        attempts += 1
+        result = result_from(sample)
+        if result.get("state") == "truck_purchase" and result.get("safe_to_act"):
+            return sample, attempts
+        remaining = deadline - clock()
+        if remaining <= 0:
+            return sample, attempts
+        sleep(min(interval, remaining))
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--delay", type=float, default=10.0)
     parser.add_argument("--capture-timeout", type=float, default=20.0)
+    parser.add_argument("--load-timeout", type=float, default=10.0)
     parser.add_argument(
         "--screenshot-dir", type=Path, default=DEFAULT_NVIDIA_SCREENSHOT_DIR
     )
@@ -117,10 +145,19 @@ def main() -> int:
     set_pointer(option_target)
     click_left_once()
     set_pointer(SAFE_POINTER)
-    time.sleep(1.5)
-    after_shot, after_image, after, after_annotated, after_report = capture_analyze(
-        args.screenshot_dir, args.capture_timeout, output_dir, references
+    time.sleep(0.5)
+
+    def capture_fleet_cards():
+        return capture_analyze(
+            args.screenshot_dir, args.capture_timeout, output_dir, references
+        )
+
+    after_sample, load_attempts = wait_for_loaded_fleet_cards(
+        capture_fleet_cards,
+        lambda sample: sample[2],
+        timeout=args.load_timeout,
     )
+    after_shot, after_image, after, after_annotated, after_report = after_sample
     if after["state"] != "truck_purchase" or not after.get("safe_to_act"):
         print(f"FLEET_FAILED: fleet cards were not fully loaded: {after}")
         return 5
@@ -141,6 +178,7 @@ def main() -> int:
         "gameplay_transactions": 0,
         "dropdown_clicks": dropdown_clicks,
         "fleet_option_clicks": 1,
+        "fleet_card_load_attempts": load_attempts,
         "truck_card_clicks": 0,
         "purchase_clicks": 0,
         "mode_distances": {

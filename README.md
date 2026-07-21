@@ -230,12 +230,14 @@ repository.
 ## Project direction
 
 Guarded one-to-five desktop batches have passed both runtime and independent
-post-exit save audits on the disposable local profile. Steam Cloud discovery,
-exact active-career proof, complete recovery snapshots, and copied-save company
-inspection have now passed their first real zero-input test. The next gate is a
-supervised main-profile 1+1 through the newly isolated launcher, followed by the
-same runtime and post-exit semantic audits used on the disposable career. Normal
-main-profile input remains locked. Packaging follows later.
+post-exit save audits on the disposable local profile. The separately armed
+Steam Cloud main-profile 1+1 has now also passed its first real runtime and
+post-exit semantic audit. It filled one previously empty Valmiera slot while
+preserving all 123 pre-existing trucks, unrelated garages, and the parked World
+of Trucks delivery. The verifier reconciles the batch cost with employee income
+and job fines when ETS2 advances company time during management screens. Normal
+main-profile input remains locked while larger graduated batches are evaluated.
+Packaging follows later.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.
