@@ -35,6 +35,15 @@ PLAYER_DELIVERY_REFERENCES = (
     "my_trailer",
 )
 NAMELESS_ID_PATTERN = re.compile(r"_nameless(?:\.[0-9a-f]+)+", re.IGNORECASE)
+WORLD_OF_TRUCKS_VOLATILE_JOB_SCALARS = (
+    "target_placement_medium",
+    "target_placement_hard",
+    "target_placement_rigid",
+    "job_distance",
+    "fuel_consumed",
+    "last_reported_fuel",
+    "total_fines",
+)
 
 
 def canonicalize_nameless_ids(text: str) -> str:
@@ -147,17 +156,28 @@ def active_delivery_preserved(
     if before_job is None or after_job is None:
         return False
 
-    def without_online_id(job: dict[str, str]) -> dict[str, str]:
+    if before["online_job_id"] != after["online_job_id"]:
+        return False
+
+    def stable_online_job(job: dict[str, str]) -> dict[str, str]:
+        volatile_names = "|".join(
+            re.escape(name) for name in WORLD_OF_TRUCKS_VOLATILE_JOB_SCALARS
+        )
+        body = re.sub(
+            rf"(?m)^ ({volatile_names}): .+$",
+            lambda match: f" {match.group(1)}: <volatile>",
+            job["body"],
+        )
         return {
             "unit_type": job["unit_type"],
             "body": re.sub(
                 r"(?m)^ online_job_id: \d+$",
                 " online_job_id: <online>",
-                job["body"],
+                body,
             ),
         }
 
-    return without_online_id(before_job) == without_online_id(after_job)
+    return stable_online_job(before_job) == stable_online_job(after_job)
 
 
 def profit_entry_net(body: str) -> int:

@@ -22,6 +22,35 @@ def center(box: tuple[int, int, int, int]) -> tuple[int, int]:
     return ((left + right) // 2, (top + bottom) // 2)
 
 
+def wait_for_loaded_purchase(
+    capture,
+    timeout: float,
+    poll_interval: float = 0.5,
+    clock=time.monotonic,
+    sleeper=time.sleep,
+) -> tuple[tuple, list[dict]]:
+    """Poll a recognized loading screen without sending any additional input."""
+    deadline = clock() + timeout
+    observations: list[dict] = []
+    while True:
+        result = capture()
+        state = result[2]
+        observations.append(
+            {
+                "state": state.get("state"),
+                "safe_to_act": bool(state.get("safe_to_act")),
+                "visual_integrity": state.get("visual_integrity"),
+            }
+        )
+        if state.get("state") == "truck_purchase" and state.get("safe_to_act"):
+            return result, observations
+        if state.get("state") not in {"dealer_map", "truck_purchase"}:
+            return result, observations
+        if clock() >= deadline:
+            return result, observations
+        sleeper(poll_interval)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--delay", type=float, default=10.0)
@@ -74,13 +103,17 @@ def main() -> int:
     set_pointer(SAFE_POINTER)
     time.sleep(1.5)
 
-    after_shot, _after_image, after, after_annotated, after_report = capture_analyze(
-        args.screenshot_dir, args.capture_timeout, output_dir, references
+    after_result, load_observations = wait_for_loaded_purchase(
+        lambda: capture_analyze(
+            args.screenshot_dir, args.capture_timeout, output_dir, references
+        ),
+        timeout=args.capture_timeout,
     )
+    after_shot, _after_image, after, after_annotated, after_report = after_result
     if after["state"] != "truck_purchase" or not after.get("safe_to_act"):
         print(
             "OPEN_ONLINE_FAILED: fully loaded Online Truck Purchase was not safely "
-            f"recognized: {after}"
+            f"recognized after {len(load_observations)} observation(s): {after}"
         )
         return 4
 
@@ -90,6 +123,7 @@ def main() -> int:
         "truck_card_clicks": 0,
         "purchase_clicks": 0,
         "buy_online_target": list(target),
+        "load_observations": load_observations,
         "before": {
             "screenshot": str(before_shot),
             "annotated": str(before_annotated),

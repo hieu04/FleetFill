@@ -48,6 +48,11 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="CAREER_NAME",
         help="Arm exactly one guarded 1+1 batch on the named Steam Cloud career",
     )
+    live_group.add_argument(
+        "--main-profile-two-validation",
+        metavar="CAREER_NAME",
+        help="Arm exactly one guarded 2+2 batch on the named Steam Cloud career",
+    )
     return parser
 
 
@@ -61,11 +66,15 @@ def main(argv: list[str] | None = None) -> int:
     app.setOrganizationName("FleetFill")
     app.setStyle("Fusion")
     app.setStyleSheet(APP_STYLESHEET)
+    main_profile_name = (
+        args.main_profile_two_validation or args.main_profile_validation
+    )
     window = build_window(
         project_root(),
         live_validation_enabled=args.live_validation,
         graduated_live_enabled=args.live_test,
-        main_profile_name=args.main_profile_validation,
+        main_profile_name=main_profile_name,
+        main_profile_slots=2 if args.main_profile_two_validation else 1,
     )
     page_index = {"setup": 0, "history": 1, "settings": 2}[args.page]
     window.stack.setCurrentIndex(page_index)

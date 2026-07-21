@@ -98,12 +98,16 @@ class SetupPage(QWidget):
         live_validation_enabled: bool = False,
         graduated_live_enabled: bool = False,
         main_profile_name: str | None = None,
+        main_profile_slots: int = 1,
     ) -> None:
         super().__init__()
+        if main_profile_name and main_profile_slots not in (1, 2):
+            raise ValueError("Main-profile validation supports only 1+1 or 2+2")
         self.project_root = project_root
         self.live_validation_enabled = live_validation_enabled
         self.graduated_live_enabled = graduated_live_enabled
         self.main_profile_name = main_profile_name
+        self.main_profile_slots = main_profile_slots
         self.live_execution_enabled = (
             live_validation_enabled or graduated_live_enabled or bool(main_profile_name)
         )
@@ -182,9 +186,10 @@ class SetupPage(QWidget):
         self.slots_combo = QComboBox()
         for count in range(1, 6):
             self.slots_combo.addItem(f"{count} slot{'s' if count != 1 else ''}", count)
-        single_slot_mode = live_validation_enabled or bool(main_profile_name)
-        self.slots_combo.setCurrentIndex(0 if single_slot_mode else 4)
-        self.slots_combo.setEnabled(not single_slot_mode)
+        fixed_slot_mode = live_validation_enabled or bool(main_profile_name)
+        fixed_slot_count = main_profile_slots if main_profile_name else 1
+        self.slots_combo.setCurrentIndex(fixed_slot_count - 1 if fixed_slot_mode else 4)
+        self.slots_combo.setEnabled(not fixed_slot_mode)
         self.slots_combo.currentIndexChanged.connect(self._update_plan)
         self.driver_combo = QComboBox()
         self.driver_combo.addItem("First available")
@@ -265,7 +270,7 @@ class SetupPage(QWidget):
                 "Validation mode — exactly one truck and one driver."
                 if live_validation_enabled
                 else (
-                    "Main-profile validation — exactly one Steam Cloud 1+1."
+                    f"Main-profile validation — exactly one Steam Cloud {main_profile_slots}+{main_profile_slots}."
                     if main_profile_name
                     else (
                         "Live test mode — 1–5 slots on the disposable profile."
@@ -502,6 +507,7 @@ class SetupPage(QWidget):
                     profile,
                     enabled=True,
                     expected_profile_name=self.main_profile_name,
+                    expected_slots=self.main_profile_slots,
                 )
             else:
                 live_errors = validate_graduated_live_request(
@@ -516,7 +522,7 @@ class SetupPage(QWidget):
                 "FleetFill live validation ready"
                 if self.live_validation_enabled
                 else (
-                    "FleetFill main-profile 1+1 validation ready"
+                    f"FleetFill main-profile {self.main_profile_slots}+{self.main_profile_slots} validation ready"
                     if self.main_profile_name
                     else "FleetFill graduated live test ready"
                 )
@@ -527,8 +533,9 @@ class SetupPage(QWidget):
                 (
                     f"Estimated spend: {money(request.total_cost_eur)}\n\n"
                     "This WILL control the named Steam Cloud career after a "
-                    "10-second countdown. It is restricted to exactly one truck "
-                    "and one driver. A full recovery snapshot, sandbox restore "
+                    "10-second countdown. It is restricted to exactly "
+                    f"{request.slots} truck(s) and {request.slots} driver(s). A full "
+                    "recovery snapshot, sandbox restore "
                     "rehearsal, balance check, and empty-garage check must pass first."
                     if self.main_profile_name
                     else (
@@ -542,7 +549,11 @@ class SetupPage(QWidget):
             )
             run_button = message.addButton(
                 (
-                    "Start 1+1 live validation"
+                    (
+                        f"Start {request.slots}+{request.slots} live validation"
+                        if self.main_profile_name
+                        else "Start 1+1 live validation"
+                    )
                     if self.live_validation_enabled or self.main_profile_name
                     else f"Start {request.slots}+{request.slots} live test"
                 ),
@@ -680,8 +691,11 @@ class MainWindow(QMainWindow):
         live_validation_enabled: bool = False,
         graduated_live_enabled: bool = False,
         main_profile_name: str | None = None,
+        main_profile_slots: int = 1,
     ) -> None:
         super().__init__()
+        if main_profile_name and main_profile_slots not in (1, 2):
+            raise ValueError("Main-profile validation supports only 1+1 or 2+2")
         enabled_modes = sum(
             (bool(live_validation_enabled), bool(graduated_live_enabled), bool(main_profile_name))
         )
@@ -691,6 +705,7 @@ class MainWindow(QMainWindow):
         self.live_validation_enabled = live_validation_enabled
         self.graduated_live_enabled = graduated_live_enabled
         self.main_profile_name = main_profile_name
+        self.main_profile_slots = main_profile_slots
         self.live_execution_enabled = (
             live_validation_enabled or graduated_live_enabled or bool(main_profile_name)
         )
@@ -730,7 +745,7 @@ class MainWindow(QMainWindow):
             "1+1 validation armed"
             if live_validation_enabled
             else (
-                "Main 1+1 validation armed"
+                f"Main {main_profile_slots}+{main_profile_slots} validation armed"
                 if main_profile_name
                 else ("1–5 live test armed" if graduated_live_enabled else "Prototype")
             )
@@ -758,6 +773,7 @@ class MainWindow(QMainWindow):
             live_validation_enabled=live_validation_enabled,
             graduated_live_enabled=graduated_live_enabled,
             main_profile_name=main_profile_name,
+            main_profile_slots=main_profile_slots,
         )
         self.history_page = HistoryPage(project_root)
         self.settings_page = SettingsPage(project_root)
@@ -841,8 +857,9 @@ class MainWindow(QMainWindow):
                 profile,
                 enabled=True,
                 expected_profile_name=self.main_profile_name,
+                expected_slots=self.main_profile_slots,
             )
-            run_suffix = "main-profile-validation"
+            run_suffix = f"main-profile-{self.main_profile_slots}-validation"
             live_label = "Main-profile validation"
         else:
             errors = validate_graduated_live_request(
@@ -948,10 +965,12 @@ def build_window(
     live_validation_enabled: bool = False,
     graduated_live_enabled: bool = False,
     main_profile_name: str | None = None,
+    main_profile_slots: int = 1,
 ) -> MainWindow:
     return MainWindow(
         project_root,
         live_validation_enabled=live_validation_enabled,
         graduated_live_enabled=graduated_live_enabled,
         main_profile_name=main_profile_name,
+        main_profile_slots=main_profile_slots,
     )

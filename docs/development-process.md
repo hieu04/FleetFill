@@ -539,3 +539,92 @@ declare their local recording dependency and report as skipped when it is
 absent. The branch gate therefore enforces 126 portable tests, while calibrated
 local development continues to enforce all 133 plus the recorded transition
 suite. The corrected hosted run passed with 126 tests and seven declared skips.
+
+## 23. Isolate the main-profile 2+2 boundary
+
+The certified 1+1 Steam Cloud path remains unchanged. FleetFill now exposes a
+second developer-only app flag and PowerShell launcher that force exactly two
+trucks and two drivers. The UI fixes the selector at two, shows the EUR 499,970
+estimate, and names the mode as 2+2 so it cannot be confused with the original
+validation.
+
+The controller uses a new `--allow-steam-cloud-two-validation` authorization.
+It is mutually exclusive with the 1+1 flag and is accepted only for a unified
+count-two fill. Wrong counts, non-cloud profiles, missing recovery surfaces,
+insufficient balance, or the absence of a completely empty five-slot garage all
+stop before countdown or input. Counts above two remain locked for main
+profiles.
+
+Existing recovery and audit components were already count-aware: the zero-input
+preflight accepts `-Count 2`, the recovery snapshot and sandbox reconstruction
+cover the same three Steam surfaces, runtime evidence expects four completed
+actions, and the deep save verifier requires exactly two paired slot changes
+while preserving the other three slots, unrelated garages, pre-existing truck
+configurations, and any active delivery.
+
+The completed boundary now contains 69 desktop/domain tests and 87
+controller/save-audit tests, for 156 passing local tests. Seven calibrated
+visual tests continue to require ignored local recordings, so hosted CI will
+enforce 149 portable tests. Its exact zero-input preflight, supervised
+four-action run, and independent post-exit save audit have now passed.
+
+## 24. Handle multiple visible truck dealers
+
+The first supervised 2+2 attempt stopped safely before any purchase because the
+player-position-dependent dealer map exposed multiple valid Scania markers. The
+original marker probe required exactly one visible dealer, which was unnecessarily
+strict once the detector could already distinguish complete available markers.
+
+The marker probe now accepts one or more fully visible available dealers and uses
+a deterministic topmost-then-leftmost policy. It still stops before clicking when
+no marker exists, a dealer is already selected, or Buy Online is already enabled.
+The change preserves the transaction boundary while supporting different player
+positions and map views.
+
+## 25. Wait for online truck cards to finish loading
+
+The second supervised 2+2 attempt passed dealer selection and reached Online
+Truck Purchase, then stopped before any purchase because all four truck-image
+panels were still blank after the fixed 1.5-second transition delay. The screen
+identity was correct, but its visual-integrity check correctly remained false.
+
+The transition probe now polls without further input for up to the configured
+capture timeout. It accepts only the dealer map during the initial transition or
+the Online Truck Purchase screen while its cards render. A fully loaded purchase
+screen continues the batch; any other screen stops immediately, and blank cards
+that outlast the timeout remain a safe failure.
+
+## 26. Compare World of Trucks jobs semantically after clean exit
+
+The successful 2+2 runtime initially failed one conservative post-exit check even
+though every garage, fleet, driver, balance, and vehicle invariant passed. The
+active World of Trucks job retained its ID, cargo, route, loaded trailer, and
+player vehicle placements. Clean exit merely persisted live progress that the
+pre-run autosave did not contain: distance, fuel tracking, fines, and destination
+parking variants.
+
+The save verifier now treats only those known World of Trucks progress and parking
+fields as volatile. When both saves already contain the job object, the top-level
+online job ID must remain identical. Cargo, source and destination companies,
+loaded state, player truck/trailer placements, attachment state, and all other job
+fields remain exact semantic invariants.
+
+## 27. Certify the main-profile 2+2 boundary
+
+The corrected third attempt completed all 30 guarded UI steps and all four
+transactions. It bought two identical Scania Streamline Topline trucks and hired
+two drivers into slots zero and one of the previously empty Aarhus garage.
+Runtime validation passed before ETS2 exited.
+
+The clean post-exit audit then proved that exactly one garage changed, company
+truck and driver counts each rose by two, the online-purchase counter rose by
+two, all 124 pre-existing vehicle configurations remained intact, and every
+unrelated garage slot was unchanged. Both new trucks have matching 37-accessory
+configurations, full fuel, and zero odometer; both drivers are based in Aarhus.
+
+The EUR 499,970 batch cost reconciled exactly with EUR 183,241 of employee income
+earned while management screens advanced company time. The active World of
+Trucks job retained the same ID, cargo, route, loaded trailer, attachment state,
+and player vehicle placements. With runtime and semantic audits both passing,
+the exact 2+2 Steam Cloud boundary is certified; counts three through five remain
+input-locked on main profiles.
