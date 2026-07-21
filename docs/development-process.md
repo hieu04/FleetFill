@@ -233,3 +233,43 @@ permanent Running tab: it appears only for an active/recent run, while durable
 results will eventually belong in History. Live process launch remains locked.
 The desktop/safety suite now has 27 tests; combined with 46 controller tests,
 the offline suite contains 73 passing tests.
+
+## 14. Supervise the process before enabling live input
+
+FleetFill now has a Qt `QProcess` boundary that keeps the interface responsive
+while a controller runs. It reads the merged output stream, polls
+`batch-report.json` only after complete atomic replacements, updates the
+transient Setup status, and persists a separate `desktop-run.json` summary for
+History. Generated run records remain under ignored local output storage.
+
+The first executable behind this boundary is intentionally a simulator. It
+creates the same ready/running/completed or cancelled checkpoint sequence as the
+controller but imports no recognition probe and sends no window input. Process
+integration tests launch this real child process and verify both completion and
+cancellation during countdown. Attempts to pass a real command through the
+supervisor still raise the central live-execution lock.
+
+Cancellation is cooperative rather than a blind process kill. The desktop
+creates `cancel.requested`; the batch controller checks it before each guarded
+probe and throughout its initial countdown. If cancellation arrives while a
+probe is already confirming a purchase or hire, that probe finishes, the caller
+updates and checkpoints the garage state, and the marker stops the next probe.
+This preserves an honest recovery record and avoids abandoning a child process
+mid-click. A pre-existing marker stops before the profile backup or any input.
+
+History currently shows the latest durable desktop run with its simulation/live
+identity, profile, requested slots, completed actions, result, error, and report
+path. There is still no permanent Running tab. The app/safety suite contains 35
+tests and the controller suite contains 48, for 83 offline tests in total.
+
+The remaining live boundary is one controlled one-truck/one-driver validation on
+the disposable profile. Its backup, progress, final report, and save result must
+all agree before the desktop live lock is removed for normal batches.
+
+The first manual simulator run exposed a layout regression: placing the status
+card in the Setup page's vertical layout reduced the form columns until field
+labels overlapped. The status card is now a floating child positioned on resize,
+so it cannot affect layout geometry. Terminal simulation, cancellation, and
+failure notices auto-dismiss after a short confirmation period; active runs
+retain the visible cooperative-cancel control. The success title also says
+**Simulation complete** rather than implying that a real garage was modified.

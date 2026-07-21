@@ -14,16 +14,56 @@ sys.path.insert(0, str(TOOLS))
 
 from ets2_batch_controller import (  # noqa: E402
     BatchAbort,
+    BatchCancelled,
     DRIVER_HIRE_COST_EUR,
     TRUCK_PRICE_EUR,
     GarageState,
+    ProbeRunner,
     build_parser,
     expected_state_arguments,
     run_driver_phase,
     run_fill_phase,
     run_plan,
+    run_live,
     run_truck_phase,
 )
+
+
+class CooperativeCancellationTests(unittest.TestCase):
+    def test_probe_runner_stops_before_spawning_next_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            cancel = root / "cancel.requested"
+            cancel.touch()
+            runner = ProbeRunner(root, root / "run", 0.0, 1.0, cancel)
+            with self.assertRaisesRegex(BatchCancelled, "before guarded step 1"):
+                runner.run("never", "never.py", [], "NEVER_REPORT")
+
+    def test_live_controller_honors_preexisting_cancel_before_backup_or_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "profile"
+            autosave = profile / "save" / "autosave"
+            autosave.mkdir(parents=True)
+            (autosave / "game.sii").write_text("test", encoding="utf-8")
+            run_dir = root / "run"
+            run_dir.mkdir()
+            cancel = run_dir / "cancel.requested"
+            cancel.touch()
+            args = build_parser().parse_args(
+                [
+                    "fill", "--execute", "--profile", str(profile),
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "1", "--start-stage", "home", "--dynamic-garage",
+                    "--output-dir", str(run_dir), "--cancel-file", str(cancel),
+                ]
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = run_live(args)
+        self.assertEqual(result, 2)
+        self.assertIn("BATCH_CANCELLED", output.getvalue())
+        self.assertFalse((run_dir / "preflight-backup").exists())
 
 
 class FakeRunner:

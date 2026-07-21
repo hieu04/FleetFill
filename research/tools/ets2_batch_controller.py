@@ -28,6 +28,10 @@ class BatchAbort(RuntimeError):
     """A guarded sub-step stopped or returned unverifiable output."""
 
 
+class BatchCancelled(BatchAbort):
+    """The desktop requested a cooperative stop between guarded probes."""
+
+
 @dataclass(frozen=True)
 class GarageState:
     occupied: int
@@ -80,6 +84,7 @@ class ProbeRunner:
         run_dir: Path,
         step_delay: float,
         capture_timeout: float,
+        cancel_file: Path | None = None,
     ) -> None:
         self.tools_dir = tools_dir
         self.run_dir = run_dir
@@ -87,6 +92,13 @@ class ProbeRunner:
         self.capture_timeout = capture_timeout
         self.steps: list[StepRecord] = []
         self.current_state: GarageState | None = None
+        self.cancel_file = cancel_file
+
+    def check_cancelled(self) -> None:
+        if self.cancel_file is not None and self.cancel_file.exists():
+            raise BatchCancelled(
+                f"Cancellation requested; stopped before guarded step {len(self.steps) + 1}"
+            )
 
     def run(
         self,
@@ -99,6 +111,7 @@ class ProbeRunner:
         supports_capture_timeout: bool = True,
         accepted_return_codes: Sequence[int] = (0,),
     ) -> dict:
+        self.check_cancelled()
         index = len(self.steps) + 1
         step_dir = self.run_dir / "steps" / f"{index:03d}-{label}"
         command = [sys.executable, str(self.tools_dir / script), *arguments]
@@ -604,6 +617,11 @@ def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
         help="Path to the disposable local ETS2 profile used for the safety backup",
     )
     parser.add_argument("--output-dir", type=Path)
+    parser.add_argument(
+        "--cancel-file",
+        type=Path,
+        help="Cooperative cancellation marker checked before each guarded probe",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -742,7 +760,30 @@ def run_live(args: argparse.Namespace) -> int:
         if args.output_dir
         else tools_dir.parents[0] / "output" / "batch-controller" / f"{stamp}-{args.phase}"
     )
-    run_dir.mkdir(parents=True, exist_ok=False)
+    run_dir.mkdir(parents=True, exist_ok=True)
+    allowed_existing = {"cancel.requested"}
+    unexpected = [path for path in run_dir.iterdir() if path.name not in allowed_existing]
+    if unexpected:
+        print(f"BATCH_REFUSED: output directory is not empty: {run_dir}")
+        return 2
+    cancel_file = (
+        args.cancel_file.resolve()
+        if args.cancel_file is not None
+        else run_dir / "cancel.requested"
+    )
+    runner = ProbeRunner(
+        tools_dir=tools_dir,
+        run_dir=run_dir,
+        step_delay=args.step_delay,
+        capture_timeout=args.capture_timeout,
+        cancel_file=cancel_file,
+    )
+    runner.current_state = state
+    try:
+        runner.check_cancelled()
+    except BatchCancelled as error:
+        print(f"BATCH_CANCELLED: {error}")
+        return 2
     backup = create_preflight_backup(args.profile.resolve(), run_dir)
     (run_dir / "preflight.json").write_text(
         json.dumps(
@@ -762,27 +803,32 @@ def run_live(args: argparse.Namespace) -> int:
         ),
         encoding="utf-8",
     )
-    runner = ProbeRunner(
-        tools_dir=tools_dir,
-        run_dir=run_dir,
-        step_delay=args.step_delay,
-        capture_timeout=args.capture_timeout,
-    )
-    runner.current_state = state
     write_checkpoint(runner, "ready", args.phase, state, args)
     print(
         f"BATCH_READY: {args.phase} phase begins in {args.start_delay:.1f}s; "
         f"planned state {state} -> {preview}. Return to ETS2.",
         flush=True,
     )
-    time.sleep(args.start_delay)
+    deadline = time.monotonic() + args.start_delay
     try:
+        while time.monotonic() < deadline:
+            runner.check_cancelled()
+            time.sleep(min(0.1, max(0.0, deadline - time.monotonic())))
         if args.phase == "trucks":
             state = run_truck_phase(runner, args, state)
         elif args.phase == "drivers":
             state = run_driver_phase(runner, args, state)
         else:
             state = run_fill_phase(runner, args, state)
+        runner.check_cancelled()
+    except BatchCancelled as error:
+        state = runner.current_state or state
+        report = write_checkpoint(
+            runner, "cancelled", args.phase, state, args, error=str(error)
+        )
+        print(f"BATCH_CANCELLED: {error}")
+        print(f"BATCH_REPORT: {report.resolve()}")
+        return 2
     except (BatchAbort, ValueError) as error:
         state = runner.current_state or state
         report = write_checkpoint(

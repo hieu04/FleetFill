@@ -10,8 +10,11 @@ from fleetfill.runner import (
     LiveExecutionLocked,
     RunnerState,
     SupervisedRun,
+    RunHistoryRecord,
+    read_history_records,
     read_checkpoint,
     require_live_execution_enabled,
+    write_history_record,
 )
 
 
@@ -83,6 +86,44 @@ class SupervisedRunTests(unittest.TestCase):
         with self.assertRaises(LiveExecutionLocked):
             require_live_execution_enabled(enabled=False)
         require_live_execution_enabled(enabled=True)
+
+    def test_running_checkpoint_does_not_clear_pending_cancellation(self) -> None:
+        run = SupervisedRun(requested_transactions=10)
+        run.accept_output_line("BATCH_READY: ready")
+        run.request_cancel()
+        run.accept_checkpoint({"status": "running", "completed_transactions": 4})
+        self.assertEqual(run.state, RunnerState.CANCEL_REQUESTED)
+        self.assertEqual(run.completed_transactions, 4)
+
+    def test_simulation_completion_uses_no_input_message(self) -> None:
+        run = SupervisedRun(requested_transactions=2)
+        run.accept_checkpoint(
+            {
+                "status": "completed",
+                "phase": "simulation",
+                "completed_transactions": 2,
+            }
+        )
+        self.assertEqual(run.state, RunnerState.SUCCEEDED)
+        self.assertEqual(run.events[-1].message, "Simulation completed without game input")
+
+    def test_history_record_round_trip(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "run-1"
+            run_dir.mkdir()
+            run = SupervisedRun(requested_transactions=2)
+            run.accept_output_line("BATCH_SUCCEEDED: complete")
+            record = RunHistoryRecord.from_run(
+                run,
+                run_id="run-1",
+                profile_name="Test",
+                slots=1,
+                simulated=True,
+            )
+            write_history_record(record, run_dir)
+            loaded = read_history_records(root)
+        self.assertEqual(loaded, [record])
 
 
 if __name__ == "__main__":

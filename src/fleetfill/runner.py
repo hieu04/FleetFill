@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -17,11 +18,12 @@ class RunnerState(str, Enum):
     COUNTDOWN = "countdown"
     RUNNING = "running"
     CANCEL_REQUESTED = "cancel_requested"
+    CANCELLED = "cancelled"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
 
 
-TERMINAL_STATES = {RunnerState.SUCCEEDED, RunnerState.FAILED}
+TERMINAL_STATES = {RunnerState.SUCCEEDED, RunnerState.FAILED, RunnerState.CANCELLED}
 
 
 @dataclass(frozen=True)
@@ -64,6 +66,8 @@ class SupervisedRun:
             self._move(RunnerState.FAILED, self.error)
         elif line.startswith("BATCH_SUCCEEDED:"):
             self._move(RunnerState.SUCCEEDED, line.removeprefix("BATCH_SUCCEEDED:").strip())
+        elif line.startswith("BATCH_CANCELLED:"):
+            self._move(RunnerState.CANCELLED, line.removeprefix("BATCH_CANCELLED:").strip())
         elif line.startswith("BATCH_REPORT:"):
             self.report_path = Path(line.removeprefix("BATCH_REPORT:").strip())
 
@@ -80,17 +84,27 @@ class SupervisedRun:
             self.report_path = report_path
 
         if status == "ready":
-            self._move(RunnerState.COUNTDOWN, "Controller is ready; return to ETS2")
+            if self.state != RunnerState.CANCEL_REQUESTED:
+                self._move(RunnerState.COUNTDOWN, "Controller is ready; return to ETS2")
         elif status == "running":
-            self._move(
-                RunnerState.RUNNING,
-                f"Completed {self.completed_transactions} of {self.requested_transactions} actions",
-            )
+            message = f"Completed {self.completed_transactions} of {self.requested_transactions} actions"
+            if self.state == RunnerState.CANCEL_REQUESTED:
+                self._move(RunnerState.CANCEL_REQUESTED, f"Cancellation pending; {message.lower()}")
+            else:
+                self._move(RunnerState.RUNNING, message)
         elif status == "completed":
-            self._move(RunnerState.SUCCEEDED, "Fleet fill completed")
+            message = (
+                "Simulation completed without game input"
+                if self.phase == "simulation"
+                else "Fleet fill completed"
+            )
+            self._move(RunnerState.SUCCEEDED, message)
         elif status == "aborted":
             self.error = str(payload.get("error") or "Controller aborted")
             self._move(RunnerState.FAILED, self.error)
+        elif status == "cancelled":
+            self.error = str(payload.get("error") or "Run cancelled safely")
+            self._move(RunnerState.CANCELLED, self.error)
 
     def request_cancel(self) -> None:
         if self.state not in {RunnerState.COUNTDOWN, RunnerState.RUNNING}:
@@ -100,7 +114,9 @@ class SupervisedRun:
     def process_exited(self, exit_code: int) -> None:
         if self.state in TERMINAL_STATES:
             return
-        if exit_code == 0:
+        if self.state == RunnerState.CANCEL_REQUESTED:
+            self._move(RunnerState.CANCELLED, "Controller stopped after cancellation")
+        elif exit_code == 0:
             self._move(RunnerState.SUCCEEDED, "Controller process exited successfully")
         else:
             self.error = self.error or f"Controller process exited with code {exit_code}"
@@ -129,3 +145,64 @@ def require_live_execution_enabled(*, enabled: bool) -> None:
 
     if not enabled:
         raise LiveExecutionLocked("Live controller execution is not enabled in this build")
+
+
+@dataclass(frozen=True)
+class RunHistoryRecord:
+    run_id: str
+    created_at: str
+    profile_name: str
+    slots: int
+    simulated: bool
+    state: str
+    completed_transactions: int
+    requested_transactions: int
+    report_path: str | None
+    backup_path: str | None
+    error: str | None
+
+    @classmethod
+    def from_run(
+        cls,
+        run: SupervisedRun,
+        *,
+        run_id: str,
+        profile_name: str,
+        slots: int,
+        simulated: bool,
+    ) -> "RunHistoryRecord":
+        return cls(
+            run_id=run_id,
+            created_at=datetime.now().isoformat(timespec="seconds"),
+            profile_name=profile_name,
+            slots=slots,
+            simulated=simulated,
+            state=run.state.value,
+            completed_transactions=run.completed_transactions,
+            requested_transactions=run.requested_transactions,
+            report_path=str(run.report_path) if run.report_path else None,
+            backup_path=str(run.backup_path) if run.backup_path else None,
+            error=run.error,
+        )
+
+
+def write_history_record(record: RunHistoryRecord, run_dir: Path) -> Path:
+    run_dir.mkdir(parents=True, exist_ok=True)
+    destination = run_dir / "desktop-run.json"
+    temporary = destination.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(record.__dict__, indent=2), encoding="utf-8")
+    temporary.replace(destination)
+    return destination
+
+
+def read_history_records(root: Path) -> list[RunHistoryRecord]:
+    records: list[RunHistoryRecord] = []
+    if not root.is_dir():
+        return records
+    for path in root.glob("*/desktop-run.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            records.append(RunHistoryRecord(**payload))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            continue
+    return sorted(records, key=lambda item: item.created_at, reverse=True)

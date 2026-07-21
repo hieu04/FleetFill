@@ -120,12 +120,16 @@ def validate_request(request: FillRequest) -> list[str]:
     return errors
 
 
-def controller_arguments(request: FillRequest, project_root: Path) -> list[str]:
+def controller_arguments(
+    request: FillRequest,
+    project_root: Path,
+    output_dir: Path | None = None,
+) -> list[str]:
     """Return the currently supported guarded controller invocation."""
 
     if request.profile is None:
         raise ValueError("A profile is required to build the controller command")
-    return [
+    arguments = [
         sys.executable,
         str(project_root / "research" / "tools" / "ets2_batch_controller.py"),
         "fill",
@@ -146,7 +150,40 @@ def controller_arguments(request: FillRequest, project_root: Path) -> list[str]:
         "home",
         "--dynamic-garage",
     ]
+    if output_dir is not None:
+        arguments.extend(
+            [
+                "--output-dir",
+                str(output_dir),
+                "--cancel-file",
+                str(output_dir / "cancel.requested"),
+            ]
+        )
+    return arguments
 
 
 def controller_command_preview(request: FillRequest, project_root: Path) -> str:
     return subprocess.list2cmdline(controller_arguments(request, project_root))
+
+
+def simulator_arguments(
+    request: FillRequest,
+    output_dir: Path,
+    *,
+    countdown: float = 1.0,
+    step_delay: float = 0.15,
+) -> list[str]:
+    arguments = [
+        sys.executable,
+        "-m",
+        "fleetfill.simulated_controller",
+        "--output-dir",
+        str(output_dir),
+        "--transactions",
+        str(request.slots * 2),
+        "--countdown",
+        str(countdown),
+        "--step-delay",
+        str(step_delay),
+    ]
+    return arguments
