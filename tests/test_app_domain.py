@@ -11,6 +11,7 @@ from fleetfill.domain import (
     decode_profile_folder_name,
     discover_local_profiles,
     validate_request,
+    validate_graduated_live_request,
     validate_live_validation_request,
 )
 
@@ -101,6 +102,23 @@ class FillRequestTests(unittest.TestCase):
                 enabled=False,
             )
             self.assertEqual(len(errors), 3)
+
+    def test_graduated_live_test_allows_five_slots_only_on_test_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_profile(Path(temp))
+            request = FillRequest(profile=profile, slots=5)
+            self.assertEqual(
+                validate_graduated_live_request(
+                    request,
+                    ProfileInfo("ETS2 Automation Test", profile),
+                    enabled=True,
+                ),
+                [],
+            )
+            errors = validate_graduated_live_request(
+                request, ProfileInfo("Main career", profile), enabled=True
+            )
+            self.assertEqual(len(errors), 1)
 
     def test_supervised_live_arguments_share_output_and_cancel_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

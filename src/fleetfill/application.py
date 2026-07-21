@@ -32,10 +32,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="setup",
         help="Initial page, primarily for visual QA",
     )
-    parser.add_argument(
+    live_group = parser.add_mutually_exclusive_group()
+    live_group.add_argument(
         "--live-validation",
         action="store_true",
         help="Arm the disposable-profile one-truck/one-driver validation path",
+    )
+    live_group.add_argument(
+        "--live-test",
+        action="store_true",
+        help="Arm guarded one-to-five batches on the disposable test profile",
     )
     return parser
 
@@ -51,7 +57,9 @@ def main(argv: list[str] | None = None) -> int:
     app.setStyle("Fusion")
     app.setStyleSheet(APP_STYLESHEET)
     window = build_window(
-        project_root(), live_validation_enabled=args.live_validation
+        project_root(),
+        live_validation_enabled=args.live_validation,
+        graduated_live_enabled=args.live_test,
     )
     page_index = {"setup": 0, "history": 1, "settings": 2}[args.page]
     window.stack.setCurrentIndex(page_index)

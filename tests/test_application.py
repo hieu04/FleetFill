@@ -14,6 +14,15 @@ class ApplicationArgumentsTests(unittest.TestCase):
             build_parser().parse_args(["--live-validation"]).live_validation
         )
 
+    def test_graduated_live_test_has_a_separate_flag(self) -> None:
+        args = build_parser().parse_args(["--live-test"])
+        self.assertTrue(args.live_test)
+        self.assertFalse(args.live_validation)
+
+    def test_live_development_modes_are_mutually_exclusive(self) -> None:
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(["--live-test", "--live-validation"])
+
 
 if __name__ == "__main__":
     unittest.main()

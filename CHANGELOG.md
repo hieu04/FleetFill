@@ -51,6 +51,17 @@ not produced a public release yet.
   garage or pre-existing truck configuration changes.
 - Save-audit garage identity is written back into durable History, and opening
   History refreshes evidence finalized while the app remained running.
+- A separate graduated live-test launcher that enables one-to-five batches only
+  on the disposable Automation Test profile while normal mode remains locked.
+- Pre-input company inspection from the timestamped backup, including exact
+  balance sufficiency and existence of a completely empty large garage.
+- Generalized runtime and post-exit evidence validation for batch sizes one
+  through five.
+- Nine additional policy, UI-mode, company-preflight, runtime, and finalizer
+  tests, bringing the full offline suite to 105 tests.
+- Successful real desktop 5+5 validation in Munich: 63 guarded UI steps, an
+  exact EUR 1,249,925 deduction, five new matching trucks, five new drivers, and
+  no unrelated garage or pre-existing truck configuration changes.
 - Thirteen validation, policy, launcher, discovery, and save-audit tests,
   bringing the full offline suite to 96 tests.
 
@@ -58,6 +69,8 @@ not produced a public release yet.
 
 - Normal desktop launches cannot start live controller input. Only the explicit
   validation launcher can start the tightly limited, now-proven 1+1 run.
+- Graduated one-to-five live batches remain restricted to the disposable local
+  Automation Test profile; Steam Cloud and main-profile input remain locked.
 - Live plans require an explicit disposable profile and retain the controller's
   preflight-backup requirement.
 - Choosing a profile folder is not treated as proof of the active game career;

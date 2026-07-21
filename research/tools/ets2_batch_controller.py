@@ -269,6 +269,68 @@ def create_preflight_backup(profile: Path, destination: Path) -> dict:
     }
 
 
+def validate_company_preflight(company: dict, count: int) -> dict:
+    """Prove the backed-up company can afford and place the requested batch."""
+
+    planned_cost = count * (TRUCK_PRICE_EUR + DRIVER_HIRE_COST_EUR)
+    balance = int(company.get("money_eur", -1))
+    empty_large_garages = [
+        garage["id"]
+        for garage in company.get("large_garages", [])
+        if garage.get("occupied") == 0
+        and garage.get("truck_present") == 0
+        and garage.get("free") == 5
+        and garage.get("invalid_driver_only") == 0
+    ]
+    if balance < planned_cost:
+        raise BatchAbort(
+            f"Insufficient company balance: EUR {balance:,} available, "
+            f"EUR {planned_cost:,} required"
+        )
+    if not empty_large_garages:
+        raise BatchAbort("The backed-up save contains no completely empty large garage")
+    return {
+        "money_eur": balance,
+        "planned_cost_eur": planned_cost,
+        "remaining_balance_eur": balance - planned_cost,
+        "empty_large_garages": empty_large_garages,
+    }
+
+
+def inspect_preflight_company(
+    backup: dict, tools_dir: Path, run_dir: Path, count: int
+) -> dict:
+    """Decode only the backup copy and record a read-only company summary."""
+
+    inspector = tools_dir / "save-inspector"
+    source = Path(backup["backup"]) / "autosave" / "game.sii"
+    decoded = run_dir / "preflight-company-game.txt"
+    report = run_dir / "preflight-company.json"
+    commands = [
+        (["node", str(inspector / "decrypt-save.mjs"), str(source), str(decoded)], inspector),
+        ([sys.executable, str(tools_dir / "inspect_company_save.py"), str(decoded), "--output", str(report)], tools_dir),
+    ]
+    for command, cwd in commands:
+        completed = subprocess.run(
+            command,
+            cwd=cwd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+        )
+        if completed.returncode:
+            detail = completed.stdout.strip().splitlines()[-1:]
+            raise BatchAbort(
+                "Company preflight inspection failed"
+                + (f": {detail[0]}" if detail else "")
+            )
+    company = json.loads(report.read_text(encoding="utf-8"))
+    return validate_company_preflight(company, count)
+
+
 def initial_state(args: argparse.Namespace) -> GarageState:
     return GarageState(
         occupied=args.occupied,
@@ -792,24 +854,37 @@ def run_live(args: argparse.Namespace) -> int:
         print(f"BATCH_CANCELLED: {error}")
         return 2
     backup = create_preflight_backup(args.profile.resolve(), run_dir)
+    preflight_payload = {
+        "phase": args.phase,
+        "initial_state": asdict(state),
+        "planned_final_state": asdict(preview),
+        "count": args.count,
+        "garage_marker": [args.garage_x, args.garage_y]
+        if args.garage_x is not None and args.garage_y is not None
+        else None,
+        "dynamic_garage": dynamic,
+        "require_empty_garage": args.require_empty_garage,
+        "start_stage": getattr(args, "start_stage", None),
+        "backup": backup,
+    }
+    if args.phase == "fill":
+        try:
+            preflight_payload["company"] = inspect_preflight_company(
+                backup, tools_dir, run_dir, args.count
+            )
+        except (BatchAbort, OSError, ValueError, json.JSONDecodeError) as error:
+            preflight_payload["company_preflight_error"] = str(error)
+            (run_dir / "preflight.json").write_text(
+                json.dumps(preflight_payload, indent=2), encoding="utf-8"
+            )
+            report = write_checkpoint(
+                runner, "aborted", args.phase, state, args, error=str(error)
+            )
+            print(f"BATCH_ABORTED: {error}")
+            print(f"BATCH_REPORT: {report.resolve()}")
+            return 1
     (run_dir / "preflight.json").write_text(
-        json.dumps(
-            {
-                "phase": args.phase,
-                "initial_state": asdict(state),
-                "planned_final_state": asdict(preview),
-                "count": args.count,
-                "garage_marker": [args.garage_x, args.garage_y]
-                if args.garage_x is not None and args.garage_y is not None
-                else None,
-                "dynamic_garage": dynamic,
-                "require_empty_garage": args.require_empty_garage,
-                "start_stage": getattr(args, "start_stage", None),
-                "backup": backup,
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
+        json.dumps(preflight_payload, indent=2), encoding="utf-8"
     )
     write_checkpoint(runner, "ready", args.phase, state, args)
     print(

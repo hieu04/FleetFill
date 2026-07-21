@@ -143,6 +143,26 @@ def validate_live_validation_request(
     return errors
 
 
+def validate_graduated_live_request(
+    request: FillRequest,
+    profile: ProfileInfo,
+    *,
+    enabled: bool,
+) -> list[str]:
+    """Gate the first desktop-controlled one-to-five test-profile batches."""
+
+    errors = validate_request(request)
+    if not enabled:
+        errors.append("The graduated live-test launcher is not armed.")
+    if profile.name != VALIDATION_PROFILE_NAME:
+        errors.append(
+            f"Graduated live testing requires the '{VALIDATION_PROFILE_NAME}' career."
+        )
+    if request.profile is not None and profile.path.resolve() != request.profile.resolve():
+        errors.append("The reviewed profile does not match the selected profile folder.")
+    return errors
+
+
 def controller_arguments(
     request: FillRequest,
     project_root: Path,
