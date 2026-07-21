@@ -34,8 +34,10 @@ not produced a public release yet.
 - Durable simulation records displayed on the History page.
 - Cooperative controller cancellation between guarded probes, preserving the
   checkpoint for a transaction that finishes while cancellation is pending.
-- Nine additional lifecycle, History, cancellation, and command-boundary tests,
-  bringing the offline suite to 82 tests.
+- Ten additional lifecycle, History, cancellation, and command-boundary tests,
+  bringing the offline suite to 83 tests.
+- Floating terminal/progress notifications that no longer compress the Setup
+  form and automatically dismiss after success, cancellation, or failure.
 
 ### Safety
 

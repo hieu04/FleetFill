@@ -259,9 +259,17 @@ mid-click. A pre-existing marker stops before the profile backup or any input.
 
 History currently shows the latest durable desktop run with its simulation/live
 identity, profile, requested slots, completed actions, result, error, and report
-path. There is still no permanent Running tab. The app/safety suite contains 34
-tests and the controller suite contains 48, for 82 offline tests in total.
+path. There is still no permanent Running tab. The app/safety suite contains 35
+tests and the controller suite contains 48, for 83 offline tests in total.
 
 The remaining live boundary is one controlled one-truck/one-driver validation on
 the disposable profile. Its backup, progress, final report, and save result must
 all agree before the desktop live lock is removed for normal batches.
+
+The first manual simulator run exposed a layout regression: placing the status
+card in the Setup page's vertical layout reduced the form columns until field
+labels overlapped. The status card is now a floating child positioned on resize,
+so it cannot affect layout geometry. Terminal simulation, cancellation, and
+failure notices auto-dismiss after a short confirmation period; active runs
+retain the visible cooperative-cancel control. The success title also says
+**Simulation complete** rather than implying that a real garage was modified.

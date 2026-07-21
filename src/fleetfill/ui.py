@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from datetime import datetime
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -238,8 +238,13 @@ class SetupPage(QWidget):
         run_status.addWidget(self.run_status_title)
         run_status.addWidget(self.run_status_message)
         run_status.addWidget(self.cancel_button)
+        self.run_status_card.setParent(self)
+        self.run_status_card.setMinimumWidth(420)
+        self.run_status_card.setMaximumWidth(560)
         self.run_status_card.hide()
-        page.addWidget(self.run_status_card)
+        self.status_hide_timer = QTimer(self)
+        self.status_hide_timer.setSingleShot(True)
+        self.status_hide_timer.timeout.connect(self.run_status_card.hide)
 
         self._load_profiles()
         self._update_plan()
@@ -338,7 +343,7 @@ class SetupPage(QWidget):
             RunnerState.RUNNING: "FleetFill is running",
             RunnerState.CANCEL_REQUESTED: "Stopping safely",
             RunnerState.CANCELLED: "Simulation cancelled",
-            RunnerState.SUCCEEDED: "Garage filled",
+            RunnerState.SUCCEEDED: "Simulation complete",
             RunnerState.FAILED: "FleetFill stopped",
             RunnerState.IDLE: "FleetFill is ready",
         }
@@ -347,7 +352,28 @@ class SetupPage(QWidget):
         cancellable = state in {RunnerState.COUNTDOWN, RunnerState.RUNNING}
         self.cancel_button.setVisible(cancellable)
         self.cancel_button.setEnabled(cancellable)
+        self.status_hide_timer.stop()
+        self.run_status_card.adjustSize()
+        self._position_run_status()
         self.run_status_card.show()
+        self.run_status_card.raise_()
+        if state in {RunnerState.SUCCEEDED, RunnerState.CANCELLED, RunnerState.FAILED}:
+            self.status_hide_timer.start(3500)
+
+    def _position_run_status(self) -> None:
+        hint = self.run_status_card.sizeHint()
+        width = min(560, max(420, self.width() - 64))
+        height = hint.height()
+        self.run_status_card.resize(width, height)
+        self.run_status_card.move(
+            max(24, self.width() - width - 32),
+            max(24, self.height() - height - 28),
+        )
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        if hasattr(self, "run_status_card"):
+            self._position_run_status()
 
     def _show_plan(self) -> None:
         request = self.current_request()

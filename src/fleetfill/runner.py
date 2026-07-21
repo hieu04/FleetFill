@@ -93,7 +93,12 @@ class SupervisedRun:
             else:
                 self._move(RunnerState.RUNNING, message)
         elif status == "completed":
-            self._move(RunnerState.SUCCEEDED, "Fleet fill completed")
+            message = (
+                "Simulation completed without game input"
+                if self.phase == "simulation"
+                else "Fleet fill completed"
+            )
+            self._move(RunnerState.SUCCEEDED, message)
         elif status == "aborted":
             self.error = str(payload.get("error") or "Controller aborted")
             self._move(RunnerState.FAILED, self.error)

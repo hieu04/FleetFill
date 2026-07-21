@@ -47,6 +47,7 @@ class MainWindowTests(unittest.TestCase):
         page = self.window.setup_page
         self.assertIn("Active ETS2 career", page.active_profile_check.text())
         self.assertTrue(page.run_status_card.isHidden())
+        self.assertEqual(page.layout().indexOf(page.run_status_card), -1)
 
         page.show_run_status(RunnerState.COUNTDOWN, "Return to ETS2 now")
 
@@ -54,6 +55,12 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(page.run_status_title.text(), "Return to ETS2")
         self.assertEqual(page.run_status_message.text(), "Return to ETS2 now")
         self.assertFalse(page.cancel_button.isHidden())
+
+        page.show_run_status(RunnerState.SUCCEEDED, "Simulation completed")
+
+        self.assertEqual(page.run_status_title.text(), "Simulation complete")
+        self.assertTrue(page.cancel_button.isHidden())
+        self.assertTrue(page.status_hide_timer.isActive())
 
     def test_history_page_loads_durable_simulation_result(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

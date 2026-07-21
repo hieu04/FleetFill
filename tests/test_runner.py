@@ -95,6 +95,18 @@ class SupervisedRunTests(unittest.TestCase):
         self.assertEqual(run.state, RunnerState.CANCEL_REQUESTED)
         self.assertEqual(run.completed_transactions, 4)
 
+    def test_simulation_completion_uses_no_input_message(self) -> None:
+        run = SupervisedRun(requested_transactions=2)
+        run.accept_checkpoint(
+            {
+                "status": "completed",
+                "phase": "simulation",
+                "completed_transactions": 2,
+            }
+        )
+        self.assertEqual(run.state, RunnerState.SUCCEEDED)
+        self.assertEqual(run.events[-1].message, "Simulation completed without game input")
+
     def test_history_record_round_trip(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
