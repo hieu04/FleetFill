@@ -38,10 +38,21 @@ not produced a public release yet.
   bringing the offline suite to 83 tests.
 - Floating terminal/progress notifications that no longer compress the Setup
   form and automatically dismiss after success, cancellation, or failure.
+- A separately armed one-truck/one-driver desktop validation launcher; normal
+  FleetFill launches remain live-input locked.
+- Exact validation gates for the disposable `ETS2 Automation Test` career, one
+  slot, active local autosave, and a completely empty five-slot garage.
+- Immediate runtime evidence validation and History links for the controller
+  report, timestamped backup, and validation report.
+- A post-exit, read-only save finalizer that copies stable evidence and audits a
+  one-slot change within a five-slot garage.
+- Thirteen validation, policy, launcher, discovery, and save-audit tests,
+  bringing the full offline suite to 96 tests.
 
 ### Safety
 
-- The desktop shell cannot start live controller input yet.
+- Normal desktop launches cannot start live controller input. Only the explicit
+  validation launcher can start the tightly limited 1+1 run.
 - Live plans require an explicit disposable profile and retain the controller's
   preflight-backup requirement.
 - Choosing a profile folder is not treated as proof of the active game career;

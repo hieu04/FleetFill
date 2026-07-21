@@ -273,3 +273,37 @@ so it cannot affect layout geometry. Terminal simulation, cancellation, and
 failure notices auto-dismiss after a short confirmation period; active runs
 retain the visible cooperative-cancel control. The success title also says
 **Simulation complete** rather than implying that a real garage was modified.
+
+## 15. Isolate the first desktop-controlled live validation
+
+The normal FleetFill launcher remains live-input locked. A separate developer
+launcher arms only the first supervised one-truck/one-driver run and makes that
+state visible in the top status pill and Setup note. Its policy is intentionally
+stricter than the eventual product:
+
+1. the selected and active career must be exactly `ETS2 Automation Test`;
+2. the request is fixed at one truck and one driver;
+3. the controller must dynamically locate a completely empty five-slot garage;
+4. the profile backup and shared cancellation marker must exist before input;
+5. the existing ten-second fullscreen return countdown remains in place.
+
+The desktop repeats the active-profile proof immediately before process launch,
+then runs the real controller through the already-tested `QProcess` supervisor.
+History distinguishes this from a simulation and records the controller report,
+backup path, and runtime validation report. Runtime validation requires one
+successful truck-confirm probe, one successful driver-confirm probe, two total
+guarded actions, and the exact EUR 249,985 planned spend.
+
+Runtime evidence alone cannot prove what ETS2 persisted. The save verifier was
+generalized for a one-pair change inside a five-slot garage: four untouched
+slots must remain untouched, exactly one truck/driver pair must appear, all
+other garages must retain their occupancy and driver arrays, and pre-existing
+truck configurations must remain identical. A separate finalizer refuses to
+run while ETS2 is open, copies the stable post-exit autosave without modifying
+the profile, decodes the before/after copies, and runs that semantic audit.
+
+The app suite now contains 42 tests and the controller/save-audit suite contains
+54, for 96 passing offline tests. No live input was sent while implementing or
+testing this boundary. The next step is the explicitly supervised real 1+1 run;
+general one-to-five desktop execution remains locked until its runtime and save
+evidence both pass.

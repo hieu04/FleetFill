@@ -169,7 +169,8 @@ def discover_dynamic_garage(
     context: str,
 ) -> None:
     """Find capacity in the current view, then use one bounded pan if needed."""
-    required = str(args.count)
+    require_empty = bool(getattr(args, "require_empty_garage", False))
+    required = str(state.free if require_empty else args.count)
     visible = runner.run(
         f"{context}-find-visible-capacity-garage",
         "ets2_ui_find_capacity_garage_probe.py",
@@ -612,6 +613,11 @@ def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--step-delay", type=float, default=0.4)
     parser.add_argument("--capture-timeout", type=float, default=20.0)
     parser.add_argument(
+        "--require-empty-garage",
+        action="store_true",
+        help="Only discover a garage whose free-slot count matches the planned state",
+    )
+    parser.add_argument(
         "--profile",
         type=Path,
         help="Path to the disposable local ETS2 profile used for the safety backup",
@@ -796,6 +802,7 @@ def run_live(args: argparse.Namespace) -> int:
                 if args.garage_x is not None and args.garage_y is not None
                 else None,
                 "dynamic_garage": dynamic,
+                "require_empty_garage": args.require_empty_garage,
                 "start_stage": getattr(args, "start_stage", None),
                 "backup": backup,
             },

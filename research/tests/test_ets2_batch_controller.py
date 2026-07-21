@@ -164,6 +164,7 @@ def live_args(phase: str, count: int, state: GarageState) -> SimpleNamespace:
         start_stage="dealer-map" if phase == "trucks" else "driver-list",
         initial_card_selected=False,
         dynamic_garage=False,
+        require_empty_garage=False,
         occupied=state.occupied,
         truck_present=state.truck_present,
         free=state.free,
@@ -286,6 +287,24 @@ class PhaseCompositionTests(unittest.TestCase):
         self.assertEqual(scripts.count("ets2_ui_find_capacity_garage_probe.py"), 1)
         self.assertEqual(scripts.count("ets2_ui_reselect_truck_garage_probe.py"), 1)
         self.assertEqual((args.garage_x, args.garage_y), (1260, 186))
+
+    def test_validation_discovery_explicitly_requires_all_five_free_slots(self):
+        initial = GarageState(0, 0, 5)
+        args = live_args("trucks", 1, initial)
+        args.dynamic_garage = True
+        args.require_empty_garage = True
+        args.garage_x = None
+        args.garage_y = None
+        with tempfile.TemporaryDirectory() as temp:
+            runner = FakeRunner(Path(temp))
+            run_truck_phase(runner, args, initial)
+        discovery = next(
+            call for call in runner.calls
+            if call[1] == "ets2_ui_find_capacity_garage_probe.py"
+        )
+        self.assertEqual(
+            discovery[2][discovery[2].index("--required") + 1], "5"
+        )
 
     def test_truck_phase_falls_back_to_pan_and_replays_locator(self):
         initial = GarageState(0, 0, 5)

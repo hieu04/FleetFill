@@ -6,8 +6,10 @@ purchase matching trucks, hire available drivers, and assign both to the same
 garage.
 
 The repository contains the proven automation engine, its research tools, and
-the first functional FleetFill desktop shell. The interface is not yet allowed
-to start live game input, and the Windows installer has not been built.
+the first functional FleetFill desktop shell. Normal app launches cannot start
+live game input. A separate, visibly armed developer launcher is restricted to
+the first one-truck/one-driver validation on the disposable test career. The
+Windows installer has not been built.
 
 For the chronological build story, see
 [`docs/development-process.md`](docs/development-process.md).
@@ -66,7 +68,7 @@ research/tools/ets2_ui_*_probe.py         Screen-specific guarded actions
 research/tools/ets2_*_icon_detector.py    Garage and dealer visual detection
 research/tools/verify_*_save.py           Read-only save verification
 research/tools/save-inspector/            BSII save decoding helper
-research/tests/                            46 offline unit tests
+research/tests/                            Controller and save-audit tests
 research/ui-first-findings.md              Research notes and decisions
 research/output/                           Local evidence; ignored by Git
 ```
@@ -90,6 +92,20 @@ Launch the current desktop shell:
 .\scripts\run-fleetfill.ps1
 ```
 
+That normal launcher remains input-locked and offers only the no-input
+lifecycle simulator. During supervised development, the deliberately narrow
+validation launcher is:
+
+```powershell
+.\scripts\run-fleetfill-validation.ps1
+```
+
+Validation mode is visibly labelled, forces exactly one slot, requires the
+career name `ETS2 Automation Test`, repeats the active local-profile preflight,
+requires a completely empty five-slot garage, creates a backup, and retains the
+10-second return-to-game countdown. It is not the general one-to-five product
+unlock.
+
 The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
 disposable Automation Test profile, validates the selected autosave, calculates
@@ -99,11 +115,12 @@ running, the most recently selected career is the chosen profile, its type is
 `PC_local`, and the matching local autosave was loaded after selection. A stale
 log, cloud career, different folder, or merely highlighted career fails closed.
 
-The Qt process supervisor now launches a no-input lifecycle simulator, streams
+The Qt process supervisor launches a no-input lifecycle simulator, streams
 its output and checkpoint file without freezing the UI, supports cooperative
 cancellation, and writes durable History records. The real controller uses the
-same cancellation marker between guarded probes, but live desktop execution
-remains centrally locked until the small supervised game validation.
+same cancellation marker between guarded probes. Normal desktop execution is
+still centrally locked; only the explicit 1+1 validation launcher can cross the
+live boundary.
 
 The save-inspector helper uses Node.js and a pinned dependency:
 
@@ -139,10 +156,13 @@ repository.
 
 ## Project direction
 
-The next validation is deliberately small: one truck and one driver on the
-disposable local profile, supervised through the desktop boundary. After its
-backup, checkpoints, completion record, and save result are verified, normal
-one-to-five execution can be unlocked. Packaging and a Windows installer follow.
+The next real run is deliberately small: one truck and one driver on the
+disposable local profile, supervised through the desktop boundary. Runtime
+evidence is checked immediately. After ETS2 exits cleanly, the read-only
+finalizer copies and decodes the before/after saves and verifies the exact
+money, fleet, driver, and garage-slot changes. Only after both layers agree can
+normal one-to-five execution be considered for unlocking. Packaging and a
+Windows installer follow.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.

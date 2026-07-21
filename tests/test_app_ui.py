@@ -43,6 +43,17 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(page.review_values["drivers"].text(), "5")
         self.assertEqual(page.total_value.text(), "€1,249,925")
 
+    def test_validation_mode_is_visibly_armed_and_forces_one_slot(self) -> None:
+        window = MainWindow(Path.cwd(), live_validation_enabled=True)
+        try:
+            page = window.setup_page
+            self.assertEqual(page.slots_combo.currentData(), 1)
+            self.assertFalse(page.slots_combo.isEnabled())
+            self.assertIn("Validation mode", page.integration_note.text())
+            self.assertEqual(page.total_value.text(), "€249,985")
+        finally:
+            window.close()
+
     def test_setup_exposes_active_profile_preflight_and_transient_status(self) -> None:
         page = self.window.setup_page
         self.assertIn("Active ETS2 career", page.active_profile_check.text())

@@ -23,6 +23,30 @@ def garage_arrays(units: list[tuple[str, str, str]]) -> dict[str, dict[str, list
     return result
 
 
+def changed_slot_indexes(
+    old_target: dict[str, list[str]], new_target: dict[str, list[str]]
+) -> list[int]:
+    """Return garage indexes whose paired truck/driver assignment changed."""
+
+    old_vehicles = old_target.get("vehicles", [])
+    old_drivers = old_target.get("drivers", [])
+    new_vehicles = new_target.get("vehicles", [])
+    new_drivers = new_target.get("drivers", [])
+    if not (
+        len(old_vehicles)
+        == len(old_drivers)
+        == len(new_vehicles)
+        == len(new_drivers)
+    ):
+        return []
+    return [
+        index
+        for index in range(len(old_vehicles))
+        if old_vehicles[index] != new_vehicles[index]
+        or old_drivers[index] != new_drivers[index]
+    ]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("old", type=Path)
@@ -66,8 +90,9 @@ def main() -> int:
     old_target = old_garages.get(target_id, {"vehicles": [], "drivers": []})
     new_target = new_garages.get(target_id, {"vehicles": [], "drivers": []})
 
-    target_vehicle_ids = new_target["vehicles"]
-    target_driver_ids = new_target["drivers"]
+    target_indexes = changed_slot_indexes(old_target, new_target)
+    target_vehicle_ids = [new_target["vehicles"][index] for index in target_indexes]
+    target_driver_ids = [new_target["drivers"][index] for index in target_indexes]
     vehicles = [
         vehicle_details(new_units, vehicle_id)
         for vehicle_id in target_vehicle_ids
@@ -119,11 +144,23 @@ def main() -> int:
         "company_truck_count_increased": len(new_trucks) == len(old_trucks) + args.count,
         "company_driver_count_increased": len(new_drivers) == len(old_drivers) + args.count,
         "exactly_one_garage_changed": len(changed) == 1,
-        "target_was_completely_empty": old_target["vehicles"] == ["null"] * args.count
-        and old_target["drivers"] == ["null"] * args.count,
-        "target_is_completely_filled": len(target_vehicle_ids) == args.count
-        and len(target_driver_ids) == args.count
-        and all(value != "null" for value in target_vehicle_ids + target_driver_ids),
+        "target_was_completely_empty": len(old_target["vehicles"]) >= args.count
+        and all(value == "null" for value in old_target["vehicles"])
+        and all(value == "null" for value in old_target["drivers"]),
+        "target_received_exact_batch": len(target_indexes) == args.count
+        and all(
+            old_target["vehicles"][index] == "null"
+            and old_target["drivers"][index] == "null"
+            and new_target["vehicles"][index] != "null"
+            and new_target["drivers"][index] != "null"
+            for index in target_indexes
+        ),
+        "unchanged_target_slots_preserved": all(
+            old_target["vehicles"][index] == new_target["vehicles"][index]
+            and old_target["drivers"][index] == new_target["drivers"][index]
+            for index in range(len(old_target["vehicles"]))
+            if index not in target_indexes
+        ),
         "target_trucks_are_unique": len(set(target_vehicle_ids)) == args.count,
         "target_drivers_are_unique": len(set(target_driver_ids)) == args.count,
         "target_trucks_are_in_company_fleet": all(
@@ -172,6 +209,7 @@ def main() -> int:
         "company_drivers": {"before": len(old_drivers), "after": len(new_drivers)},
         "garage_before": old_target,
         "garage_after": new_target,
+        "changed_slot_indexes": target_indexes,
         "new_trucks": vehicles,
         "new_drivers": drivers,
         "preexisting_vehicles_compared": compared_preexisting_vehicles,
