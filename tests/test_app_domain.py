@@ -7,9 +7,11 @@ from pathlib import Path
 from fleetfill.domain import (
     FillRequest,
     ProfileInfo,
+    STEAM_CLOUD_PROFILE_STORAGE,
     controller_arguments,
     decode_profile_folder_name,
     discover_local_profiles,
+    discover_steam_cloud_profiles,
     validate_request,
     validate_graduated_live_request,
     validate_live_validation_request,
@@ -39,6 +41,36 @@ class ProfileDiscoveryTests(unittest.TestCase):
             found = discover_local_profiles(home=home, environ={})
 
             self.assertEqual([(item.name, item.path) for item in found], [("Test", profile)])
+
+    def test_discovers_authoritative_steam_cloud_profile_and_companion(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            home = root / "home"
+            documents = home / "OneDrive" / "Documents" / "Euro Truck Simulator 2"
+            profile_id = "5072696D61727920436172656572"
+            companion = documents / "steam_profiles" / profile_id
+            companion.mkdir(parents=True)
+            (companion / "controls.sii").write_text("controls", encoding="utf-8")
+            userdata = root / "Steam" / "userdata"
+            app = userdata / "123" / "227300"
+            profile = app / "remote" / "profiles" / profile_id
+            (profile / "save" / "autosave").mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            (app / "remotecache.vdf").write_text("metadata", encoding="utf-8")
+
+            found = discover_steam_cloud_profiles(
+                home=home,
+                environ={},
+                userdata_roots=[userdata],
+            )
+
+            self.assertEqual(len(found), 1)
+            self.assertEqual(found[0].name, "Primary Career")
+            self.assertEqual(found[0].path, profile)
+            self.assertEqual(found[0].storage, STEAM_CLOUD_PROFILE_STORAGE)
+            self.assertEqual(found[0].documents_root, documents)
+            self.assertEqual(found[0].companion_path, companion)
+            self.assertEqual(found[0].steam_metadata_path, app / "remotecache.vdf")
 
 
 class FillRequestTests(unittest.TestCase):

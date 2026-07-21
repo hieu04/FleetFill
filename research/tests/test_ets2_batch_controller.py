@@ -31,6 +31,29 @@ from ets2_batch_controller import (  # noqa: E402
 
 
 class CooperativeCancellationTests(unittest.TestCase):
+    def test_live_controller_refuses_steam_cloud_profile_before_input(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "227300" / "remote" / "profiles" / "MAIN"
+            (profile / "save" / "autosave").mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            run_dir = root / "run"
+            args = build_parser().parse_args(
+                [
+                    "fill", "--execute", "--profile", str(profile),
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "1", "--start-stage", "home", "--dynamic-garage",
+                    "--output-dir", str(run_dir),
+                ]
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = run_live(args)
+
+        self.assertEqual(result, 2)
+        self.assertIn("Steam Cloud profiles require", output.getvalue())
+        self.assertFalse(run_dir.exists())
+
     def test_probe_runner_stops_before_spawning_next_probe(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

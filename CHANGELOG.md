@@ -62,6 +62,16 @@ not produced a public release yet.
 - Successful real desktop 5+5 validation in Munich: 63 guarded UI steps, an
   exact EUR 1,249,925 deduction, five new matching trucks, five new drivers, and
   no unrelated garage or pre-existing truck configuration changes.
+- Steam Cloud profile discovery from Steam's authoritative userdata tree, with
+  exact cloud type, storage, folder, and loaded-autosave identity checks.
+- Complete Steam Cloud recovery snapshots covering the authoritative profile,
+  Documents companion, and `remotecache.vdf`, with before/after stability and
+  copied-file SHA-256 verification.
+- A zero-input main-profile preflight that inspects only the verified copy and
+  passed its first real active-career, snapshot, balance, and garage-capacity
+  proof.
+- Eight additional cloud discovery, identity, snapshot, and controller-lock
+  tests, bringing the full offline suite to 113 tests.
 - Thirteen validation, policy, launcher, discovery, and save-audit tests,
   bringing the full offline suite to 96 tests.
 
@@ -71,6 +81,9 @@ not produced a public release yet.
   validation launcher can start the tightly limited, now-proven 1+1 run.
 - Graduated one-to-five live batches remain restricted to the disposable local
   Automation Test profile; Steam Cloud and main-profile input remain locked.
+- The existing live controller explicitly refuses Steam Cloud profile paths;
+  the main-profile preflight has no automation call and always records whether
+  input was sent.
 - Live plans require an explicit disposable profile and retain the controller's
   preflight-backup requirement.
 - Choosing a profile folder is not treated as proof of the active game career;

@@ -16,12 +16,22 @@ SUPPORTED_GAME_VERSION = "1.60"
 SUPPORTED_RESOLUTION = "1920 x 1080"
 SUPPORTED_LANGUAGE = "English"
 VALIDATION_PROFILE_NAME = "ETS2 Automation Test"
+LOCAL_PROFILE_STORAGE = "local"
+STEAM_CLOUD_PROFILE_STORAGE = "steam_cloud"
 
 
 @dataclass(frozen=True)
 class ProfileInfo:
     name: str
     path: Path
+    storage: str = LOCAL_PROFILE_STORAGE
+    documents_root: Path | None = None
+    companion_path: Path | None = None
+    steam_metadata_path: Path | None = None
+
+    @property
+    def is_steam_cloud(self) -> bool:
+        return self.storage == STEAM_CLOUD_PROFILE_STORAGE
 
 
 @dataclass(frozen=True)
@@ -83,6 +93,42 @@ def candidate_profile_roots(
     return unique
 
 
+def candidate_steam_userdata_roots(
+    *,
+    home: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+) -> list[Path]:
+    """Return plausible Steam userdata roots without touching the registry."""
+
+    home = (home or Path.home()).resolve()
+    if environ is None:
+        environ = os.environ
+    candidates: list[Path] = []
+    explicit = environ.get("FLEETFILL_STEAM_USERDATA")
+    if explicit:
+        candidates.append(Path(explicit))
+    for variable in ("ProgramFiles(x86)", "ProgramFiles"):
+        value = environ.get(variable)
+        if value:
+            candidates.append(Path(value) / "Steam" / "userdata")
+    candidates.extend(
+        [
+            home / "AppData" / "Local" / "Steam" / "userdata",
+            Path("C:/Program Files (x86)/Steam/userdata"),
+            Path("C:/Program Files/Steam/userdata"),
+        ]
+    )
+
+    unique: list[Path] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        key = os.path.normcase(str(candidate))
+        if key not in seen:
+            seen.add(key)
+            unique.append(candidate)
+    return unique
+
+
 def discover_local_profiles(
     *,
     home: Path | None = None,
@@ -101,6 +147,91 @@ def discover_local_profiles(
                 continue
             seen.add(key)
             profiles.append(ProfileInfo(decode_profile_folder_name(path.name), path))
+    return sorted(profiles, key=lambda profile: profile.name.casefold())
+
+
+def discover_steam_cloud_profiles(
+    *,
+    home: Path | None = None,
+    environ: Mapping[str, str] | None = None,
+    userdata_roots: list[Path] | None = None,
+) -> list[ProfileInfo]:
+    """Discover authoritative ETS2 Steam Cloud profiles and recovery companions."""
+
+    home = (home or Path.home()).resolve()
+    if environ is None:
+        environ = os.environ
+    documents_roots = [root.parent for root in candidate_profile_roots(home=home, environ=environ)]
+    companion_by_id: dict[str, tuple[Path, Path]] = {}
+    for documents_root in documents_roots:
+        mirror = documents_root / "steam_profiles"
+        try:
+            mirror_exists = mirror.is_dir()
+        except OSError:
+            mirror_exists = False
+        if not mirror_exists:
+            continue
+        try:
+            mirror_entries = list(mirror.iterdir())
+        except OSError:
+            continue
+        for path in mirror_entries:
+            if path.is_dir():
+                companion_by_id.setdefault(path.name.casefold(), (path, documents_root))
+
+    roots = userdata_roots or candidate_steam_userdata_roots(home=home, environ=environ)
+    profiles: list[ProfileInfo] = []
+    seen: set[str] = set()
+    for userdata_root in roots:
+        try:
+            root_exists = userdata_root.is_dir()
+        except OSError:
+            root_exists = False
+        if not root_exists:
+            continue
+        try:
+            accounts = list(userdata_root.iterdir())
+        except OSError:
+            continue
+        for account in accounts:
+            app_root = account / "227300"
+            profiles_root = app_root / "remote" / "profiles"
+            try:
+                profiles_root_exists = profiles_root.is_dir()
+            except OSError:
+                profiles_root_exists = False
+            if not profiles_root_exists:
+                continue
+            metadata = app_root / "remotecache.vdf"
+            try:
+                profile_entries = list(profiles_root.iterdir())
+            except OSError:
+                continue
+            for path in profile_entries:
+                if (
+                    not path.is_dir()
+                    or not (path / "profile.sii").is_file()
+                    or not (path / "save" / "autosave").is_dir()
+                ):
+                    continue
+                key = os.path.normcase(str(path.resolve()))
+                if key in seen:
+                    continue
+                seen.add(key)
+                companion, documents_root = companion_by_id.get(
+                    path.name.casefold(),
+                    (None, None),
+                )
+                profiles.append(
+                    ProfileInfo(
+                        decode_profile_folder_name(path.name),
+                        path,
+                        storage=STEAM_CLOUD_PROFILE_STORAGE,
+                        documents_root=documents_root,
+                        companion_path=companion,
+                        steam_metadata_path=metadata if metadata.is_file() else None,
+                    )
+                )
     return sorted(profiles, key=lambda profile: profile.name.casefold())
 
 

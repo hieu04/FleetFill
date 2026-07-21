@@ -101,6 +101,19 @@ garage icon and the complete expected slot fingerprint before it is clicked.
 Any loading frame, popup, identity change, missing marker, unexpected slot, or
 failed acknowledgement aborts the batch.
 
+## Zero-input Steam Cloud preflight
+
+The main-profile preflight is deliberately separate from the live controller.
+It proves the exact active Steam Cloud career, creates a complete hash-verified
+recovery snapshot, and runs company inspection only against the copied autosave:
+
+```powershell
+.\scripts\run-main-profile-preflight.ps1 -ProfileName "Your career name"
+```
+
+The local-only batch controller refuses authoritative Steam Cloud paths. This
+preflight does not import or invoke any UI probe and reports `input_sent: false`.
+
 ## Read-only save inspection
 
 `tools/decrypt_scs_file.py` turns an encrypted `ScsC` SII file into a separate

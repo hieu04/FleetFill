@@ -9,7 +9,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from fleetfill.domain import ProfileInfo
+from fleetfill.domain import STEAM_CLOUD_PROFILE_STORAGE, ProfileInfo
 
 
 SET_PROFILE_RE = re.compile(r"Set profile finished: '([^']+)'\s*$")
@@ -97,6 +97,8 @@ def parse_latest_profile_evidence(log_text: str) -> ActiveProfileEvidence | None
 def game_log_for_profile(profile: ProfileInfo) -> Path:
     """Resolve game.log.txt from an ETS2 profiles/<id> directory."""
 
+    if profile.documents_root is not None:
+        return profile.documents_root / "game.log.txt"
     return profile.path.parent.parent / "game.log.txt"
 
 
@@ -230,15 +232,27 @@ def assess_active_profile(
         problems.append(
             f"ETS2 most recently selected '{evidence.profile_name}', not '{profile.name}'."
         )
-    if evidence.profile_type != "PC_local":
+    expected_profile_type = (
+        "PC_steam_cloud"
+        if profile.storage == STEAM_CLOUD_PROFILE_STORAGE
+        else "PC_local"
+    )
+    expected_log_storage = (
+        "steam" if profile.storage == STEAM_CLOUD_PROFILE_STORAGE else "home"
+    )
+    if evidence.profile_type != expected_profile_type:
         actual = evidence.profile_type or "unknown"
-        problems.append(f"The active career is {actual}; FleetFill requires PC_local.")
+        problems.append(
+            f"The active career is {actual}; FleetFill expected {expected_profile_type}."
+        )
     if evidence.confirmed_name != profile.name:
         problems.append("The selected career has not been confirmed by ETS2.")
     if evidence.load_line is None:
         problems.append("That career's save has not been loaded yet.")
-    if evidence.storage != "home":
-        problems.append("The loaded save is not from ETS2's local profile storage.")
+    if evidence.storage != expected_log_storage:
+        problems.append(
+            f"The loaded save is not from ETS2's expected {expected_log_storage} storage."
+        )
     if (evidence.profile_folder_id or "").casefold() != expected_id.casefold():
         problems.append("The loaded save folder does not match the profile chosen in FleetFill.")
 
@@ -252,7 +266,11 @@ def assess_active_profile(
         )
     return ProfilePreflight(
         True,
-        f"Active: {profile.name} (local autosave loaded)",
+        (
+            f"Active: {profile.name} (Steam Cloud autosave loaded)"
+            if profile.storage == STEAM_CLOUD_PROFILE_STORAGE
+            else f"Active: {profile.name} (local autosave loaded)"
+        ),
         evidence=evidence,
         log_path=path,
     )
