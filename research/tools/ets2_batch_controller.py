@@ -269,6 +269,17 @@ def create_preflight_backup(profile: Path, destination: Path) -> dict:
     }
 
 
+def is_steam_cloud_profile_path(profile: Path) -> bool:
+    """Recognize cloud storage so this local-only controller fails closed."""
+
+    resolved = profile.resolve()
+    parent = resolved.parent.name.casefold()
+    grandparent = resolved.parent.parent.name.casefold()
+    return parent == "steam_profiles" or (
+        parent == "profiles" and grandparent == "remote"
+    )
+
+
 def validate_company_preflight(company: dict, count: int) -> dict:
     """Prove the backed-up company can afford and place the requested batch."""
 
@@ -797,6 +808,12 @@ def run_live(args: argparse.Namespace) -> int:
         return 2
     if args.profile is None:
         print("BATCH_REFUSED: live phases require an explicit --profile path")
+        return 2
+    if is_steam_cloud_profile_path(args.profile):
+        print(
+            "BATCH_REFUSED: Steam Cloud profiles require the separate "
+            "main-profile safety boundary"
+        )
         return 2
     if args.count < 1:
         print("BATCH_REFUSED: --count must be at least one")

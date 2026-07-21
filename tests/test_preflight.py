@@ -5,12 +5,12 @@ import os
 import unittest
 from pathlib import Path
 
-from fleetfill.domain import ProfileInfo
+from fleetfill.domain import STEAM_CLOUD_PROFILE_STORAGE, ProfileInfo
 from fleetfill.preflight import assess_active_profile, parse_latest_profile_evidence
 
 
 TEST_ID = "45545332204175746F6D6174696F6E2054657374"
-MAIN_ID = "736B69626964697369676D61343230"
+MAIN_ID = "5072696D61727920436172656572"
 
 
 def selection(name: str, profile_type: str, storage: str, folder_id: str) -> str:
@@ -95,6 +95,60 @@ class ActiveProfilePreflightTests(unittest.TestCase):
         )
         self.assertFalse(result.passed)
         self.assertTrue(any("PC_steam_cloud" in item for item in result.problems))
+
+    def test_exact_latest_cloud_profile_passes_for_cloud_profile_info(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            documents = root / "Euro Truck Simulator 2"
+            documents.mkdir()
+            log_path = documents / "game.log.txt"
+            log_path.write_text(
+                selection("Primary Career", "PC_steam_cloud", "steam", MAIN_ID),
+                encoding="utf-8",
+            )
+            profile_path = root / "userdata" / "123" / "227300" / "remote" / "profiles" / MAIN_ID
+            profile_path.mkdir(parents=True)
+
+            result = assess_active_profile(
+                ProfileInfo(
+                    "Primary Career",
+                    profile_path,
+                    storage=STEAM_CLOUD_PROFILE_STORAGE,
+                    documents_root=documents,
+                ),
+                game_running=True,
+            )
+
+        self.assertTrue(result.passed)
+        self.assertEqual(
+            result.summary,
+            "Active: Primary Career (Steam Cloud autosave loaded)",
+        )
+
+    def test_cloud_profile_requires_exact_steam_folder(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            documents = root / "Euro Truck Simulator 2"
+            documents.mkdir()
+            (documents / "game.log.txt").write_text(
+                selection("Primary Career", "PC_steam_cloud", "steam", "WRONG"),
+                encoding="utf-8",
+            )
+            profile_path = root / "remote" / "profiles" / MAIN_ID
+            profile_path.mkdir(parents=True)
+
+            result = assess_active_profile(
+                ProfileInfo(
+                    "Primary Career",
+                    profile_path,
+                    storage=STEAM_CLOUD_PROFILE_STORAGE,
+                    documents_root=documents,
+                ),
+                game_running=True,
+            )
+
+        self.assertFalse(result.passed)
+        self.assertTrue(any("folder does not match" in item for item in result.problems))
 
     def test_wrong_folder_fails(self) -> None:
         result = self.run_check(

@@ -389,3 +389,35 @@ array and found no changes. This proves the intended full batch size on the
 calibrated local profile. The next boundary is safe Steam Cloud/main-profile
 discovery, backup, and active-career validation; that broader input scope remains
 locked until it has equivalent evidence.
+
+## 19. Establish the Steam Cloud zero-input boundary
+
+Steam Cloud careers have two local recovery surfaces rather than one. The full
+company profile and saves are authoritative under Steam's per-user app storage,
+while the ETS2 Documents tree contains a smaller companion directory for local
+controls and configuration. Steam also tracks synchronization state in
+`remotecache.vdf`. Treating only the Documents companion as the save would have
+produced an incomplete and misleading backup.
+
+FleetFill now discovers the authoritative app `227300` profile without embedding
+an account number or career name. A cloud profile carries its storage type,
+Documents root, companion path, and Steam metadata path. Active-career proof is
+storage-aware: local profiles require `PC_local` and `/home/profiles`, while a
+cloud preflight requires `PC_steam_cloud` and `/steam/profiles`, always with the
+exact folder ID and a save loaded after selection.
+
+The recovery snapshot copies the complete authoritative cloud profile, the
+Documents companion, and Steam metadata. It hashes every source before copying,
+hashes the sources again afterward to detect races, and verifies every copied
+file by SHA-256. The first real closed-game snapshot verified 104 cloud files,
+9 companion files, and the metadata file. A later active-career zero-input run
+passed the exact Steam identity proof, repeated the snapshot, and decoded only
+the copied autosave. That copy contained sufficient balance for the planned 1+1
+and 45 completely empty large garages. The report recorded `input_sent: false`.
+
+A deliberate closed-game test also proved the opposite path: stale local-career
+evidence was rejected, no snapshot was created, and no input was sent. The old
+batch controller now explicitly refuses Steam Cloud profile paths. The full
+offline suite contains 54 desktop/domain tests and 59 controller/save tests, for
+113 passing tests. Main-profile live input remains locked until a separate 1+1
+launcher and equivalent post-exit audit boundary are reviewed.
