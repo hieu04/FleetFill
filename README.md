@@ -125,7 +125,8 @@ The same two suites run automatically on Windows for every pull request and
 every push to `main`. CI enforces 126 portable tests; seven calibrated visual
 tests report as skipped because their private ETS2 recording evidence remains
 in ignored local output. The full local run remains 133 tests. The required
-status-check name is `FleetFill tests / Windows test suite`.
+status-check context is `Windows test suite`, produced by the `FleetFill tests`
+workflow.
 
 Launch the current desktop shell:
 

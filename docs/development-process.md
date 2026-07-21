@@ -518,11 +518,12 @@ controller/save-audit suite.
 
 The workflow runs for every pull request, every push to `main`, and manual
 dispatches. It has read-only repository permissions, cancels superseded runs,
-and exposes one stable branch-protection check named
-`FleetFill tests / Windows test suite`. The ruleset can require that check once
-its first GitHub-hosted run succeeds. Recorded UI transitions remain a separate
-hardware-calibrated validation because they depend on the real ETS2 fullscreen
-environment and must not run on a generic hosted worker.
+and exposes one stable branch-protection context named `Windows test suite`
+under the `FleetFill tests` workflow. The active `Protect main` ruleset now
+requires that check without requiring the branch to be retested against every
+new `main` commit. Recorded UI transitions remain a separate hardware-calibrated
+validation because they depend on the real ETS2 fullscreen environment and must
+not run on a generic hosted worker.
 
 The first hosted run also added a portability regression test to the gate.
 GitHub's Windows temporary directory was presented with an 8.3 short-path user
@@ -537,4 +538,4 @@ CI would violate the repository's evidence policy. Those seven tests now
 declare their local recording dependency and report as skipped when it is
 absent. The branch gate therefore enforces 126 portable tests, while calibrated
 local development continues to enforce all 133 plus the recorded transition
-suite.
+suite. The corrected hosted run passed with 126 tests and seven declared skips.
