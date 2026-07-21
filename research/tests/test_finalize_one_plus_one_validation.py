@@ -46,7 +46,9 @@ class FinalizeValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             run_dir = Path(temp)
             report = run_dir / "save-audit.json"
-            report.write_text("{}", encoding="utf-8")
+            report.write_text(
+                json.dumps({"target_garage": "garage.salzburg"}), encoding="utf-8"
+            )
             (run_dir / "validation-report.json").write_text(
                 json.dumps({"deep_save_verification": "pending_clean_game_exit"}),
                 encoding="utf-8",
@@ -64,6 +66,7 @@ class FinalizeValidationTests(unittest.TestCase):
             self.assertEqual(runtime["deep_save_verification"], "passed")
             self.assertTrue(history["save_audit_passed"])
             self.assertEqual(history["save_audit_report"], str(report.resolve()))
+            self.assertEqual(history["target_garage"], "garage.salzburg")
 
 
 if __name__ == "__main__":

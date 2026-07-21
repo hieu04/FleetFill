@@ -164,6 +164,7 @@ class RunHistoryRecord:
     validation_report: str | None = None
     save_audit_passed: bool | None = None
     save_audit_report: str | None = None
+    target_garage: str | None = None
 
     @classmethod
     def from_run(

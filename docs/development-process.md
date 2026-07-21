@@ -307,3 +307,36 @@ The app suite now contains 42 tests and the controller/save-audit suite contains
 testing this boundary. The next step is the explicitly supervised real 1+1 run;
 general one-to-five desktop execution remains locked until its runtime and save
 evidence both pass.
+
+## 16. Complete the real desktop 1+1 validation
+
+The armed desktop boundary completed its first real run on the disposable local
+career. It dynamically selected a completely empty Salzburg garage and finished
+all 19 guarded UI transitions without an abort:
+
+- one saved Scania Streamline Topline was purchased;
+- one recruitment-agency driver was assigned to that truck in the same garage;
+- the controller recorded two of two intended transactions and EUR 249,985 of
+  expected spend;
+- the runtime evidence validator passed every backup, scope, step, transaction,
+  and cost check.
+
+After ETS2 exited normally, the independent finalizer decoded the encrypted
+before/after autosaves and passed every semantic check. Money changed from EUR
+76,537,256 to EUR 76,287,271. Company truck and driver totals each changed from
+138 to 139. Salzburg changed from five empty paired slots to exactly one paired
+truck/driver slot plus four untouched empty slots. All unrelated garage arrays
+and all 138 pre-existing truck configurations were preserved. The new truck had
+zero odometer and full fuel, and the hired driver was removed from the offers
+list with Salzburg as both hometown and current city.
+
+The run also exposed a harmless reporting artifact: dynamic selection retained
+the old fixed-garage placeholder label `Reims` even though visual identity and
+the persisted save both pointed to Salzburg. Dynamic runtime reports now use a
+neutral label, while the post-exit audit writes the authoritative garage ID back
+into History. History also refreshes when opened so evidence finalized by the
+external post-exit tool becomes visible without restarting FleetFill.
+
+This completes the small live-validation gate. Normal one-to-five desktop input
+remains locked while the proven safeguards are carried into the general launch
+policy.

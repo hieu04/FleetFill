@@ -32,6 +32,13 @@ drivers into the same garage. An independent before/after save audit verified
 the exact money change, five new trucks, five new drivers, unchanged unrelated
 garages, and preserved configurations for all pre-existing trucks.
 
+The desktop validation boundary has also completed its first real 1+1 run. The
+armed app selected an empty Salzburg garage, bought one truck, hired one driver,
+and completed all 19 guarded UI steps. The post-exit audit verified the exact
+EUR 249,985 deduction, fleet and driver increases from 138 to 139, one paired
+garage slot change, and preservation of all 138 pre-existing truck
+configurations and every unrelated garage.
+
 This is still a calibrated prototype. It should not be treated as compatible
 with other ETS2 versions, resolutions, UI languages, truck cards, or profiles
 until those combinations have their own recognition evidence and tests.
@@ -156,13 +163,11 @@ repository.
 
 ## Project direction
 
-The next real run is deliberately small: one truck and one driver on the
-disposable local profile, supervised through the desktop boundary. Runtime
-evidence is checked immediately. After ETS2 exits cleanly, the read-only
-finalizer copies and decodes the before/after saves and verifies the exact
-money, fleet, driver, and garage-slot changes. Only after both layers agree can
-normal one-to-five execution be considered for unlocking. Packaging and a
-Windows installer follow.
+The deliberately small desktop 1+1 validation has passed both its immediate
+runtime checks and independent post-exit save audit. The next engineering gate
+is deciding how to graduate that proven boundary into normal one-to-five
+execution without weakening the profile, backup, cancellation, or evidence
+requirements. Packaging and a Windows installer follow.
 
 FleetFill is an unofficial community project and is not affiliated with SCS
 Software. Euro Truck Simulator 2 is a trademark of its respective owner.

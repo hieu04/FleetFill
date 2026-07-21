@@ -46,13 +46,18 @@ not produced a public release yet.
   report, timestamped backup, and validation report.
 - A post-exit, read-only save finalizer that copies stable evidence and audits a
   one-slot change within a five-slot garage.
+- Successful real desktop 1+1 validation in Salzburg: 19 guarded UI steps, an
+  exact EUR 249,985 deduction, one new truck, one new driver, and no unrelated
+  garage or pre-existing truck configuration changes.
+- Save-audit garage identity is written back into durable History, and opening
+  History refreshes evidence finalized while the app remained running.
 - Thirteen validation, policy, launcher, discovery, and save-audit tests,
   bringing the full offline suite to 96 tests.
 
 ### Safety
 
 - Normal desktop launches cannot start live controller input. Only the explicit
-  validation launcher can start the tightly limited 1+1 run.
+  validation launcher can start the tightly limited, now-proven 1+1 run.
 - Live plans require an explicit disposable profile and retain the controller's
   preflight-backup requirement.
 - Choosing a profile folder is not treated as proof of the active game career;

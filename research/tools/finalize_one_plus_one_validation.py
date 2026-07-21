@@ -41,17 +41,23 @@ def run_checked(command: list[str], *, cwd: Path | None = None) -> None:
 def record_save_audit(run_dir: Path, *, passed: bool, report: Path | None) -> None:
     """Persist the deep result into both runtime evidence and app History."""
 
+    target_garage = None
+    if report and report.is_file():
+        audit = json.loads(report.read_text(encoding="utf-8"))
+        target_garage = audit.get("target_garage")
     runtime_report = run_dir / "validation-report.json"
     if runtime_report.is_file():
         payload = json.loads(runtime_report.read_text(encoding="utf-8"))
         payload["deep_save_verification"] = "passed" if passed else "failed"
         payload["save_audit"] = str(report.resolve()) if report else None
+        payload["target_garage"] = target_garage
         runtime_report.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     desktop_record = run_dir / "desktop-run.json"
     if desktop_record.is_file():
         payload = json.loads(desktop_record.read_text(encoding="utf-8"))
         payload["save_audit_passed"] = passed
         payload["save_audit_report"] = str(report.resolve()) if report else None
+        payload["target_garage"] = target_garage
         desktop_record.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 

@@ -514,6 +514,8 @@ class HistoryPage(QWidget):
             details += "\nSave audit: Pending clean ETS2 exit."
         if latest.save_audit_report:
             details += f"\nSave audit report: {latest.save_audit_report}"
+        if latest.target_garage:
+            details += f"\nVerified garage: {latest.target_garage}"
         self.history_details.setText(details)
 
 
@@ -639,7 +641,9 @@ class MainWindow(QMainWindow):
             button = QPushButton(title)
             button.setObjectName("navButton")
             button.setCheckable(True)
-            button.clicked.connect(lambda checked=False, page=index: self.stack.setCurrentIndex(page))
+            button.clicked.connect(
+                lambda checked=False, page=index: self._show_page(page)
+            )
             group.addButton(button)
             nav.addWidget(button)
             self.nav_buttons.append(button)
@@ -650,6 +654,11 @@ class MainWindow(QMainWindow):
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)
+
+    def _show_page(self, page: int) -> None:
+        if page == 1:
+            self.history_page.refresh()
+        self.stack.setCurrentIndex(page)
 
     def _start_simulation(self, request: FillRequest, profile: ProfileInfo) -> None:
         # The profile may have changed while the confirmation dialog was open.

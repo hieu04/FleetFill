@@ -206,6 +206,7 @@ def discover_dynamic_garage(
     if not isinstance(target, list) or len(target) != 2:
         raise BatchAbort("Dynamic garage report omitted its marker position")
     args.garage_x, args.garage_y = int(target[0]), int(target[1])
+    args.garage_label = "Dynamically selected garage"
     args.garage_locator_report = str(locator_report) if locator_report else None
 
 
