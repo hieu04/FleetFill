@@ -160,6 +160,11 @@ class RunHistoryRecord:
     report_path: str | None
     backup_path: str | None
     error: str | None
+    validation_passed: bool | None = None
+    validation_report: str | None = None
+    save_audit_passed: bool | None = None
+    save_audit_report: str | None = None
+    target_garage: str | None = None
 
     @classmethod
     def from_run(
@@ -170,6 +175,8 @@ class RunHistoryRecord:
         profile_name: str,
         slots: int,
         simulated: bool,
+        validation_passed: bool | None = None,
+        validation_report: Path | None = None,
     ) -> "RunHistoryRecord":
         return cls(
             run_id=run_id,
@@ -183,6 +190,8 @@ class RunHistoryRecord:
             report_path=str(run.report_path) if run.report_path else None,
             backup_path=str(run.backup_path) if run.backup_path else None,
             error=run.error,
+            validation_passed=validation_passed,
+            validation_report=str(validation_report) if validation_report else None,
         )
 
 

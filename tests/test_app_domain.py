@@ -6,10 +6,12 @@ from pathlib import Path
 
 from fleetfill.domain import (
     FillRequest,
+    ProfileInfo,
     controller_arguments,
     decode_profile_folder_name,
     discover_local_profiles,
     validate_request,
+    validate_live_validation_request,
 )
 
 
@@ -75,9 +77,30 @@ class FillRequestTests(unittest.TestCase):
             self.assertIn("--execute", arguments)
             self.assertEqual(arguments[arguments.index("--count") + 1], "3")
             self.assertEqual(arguments[arguments.index("--profile") + 1], str(profile))
+            self.assertEqual(arguments[-4:], [
+                "--start-stage", "home", "--dynamic-garage", "--require-empty-garage"
+            ])
+
+    def test_live_validation_accepts_only_exact_disposable_one_plus_one(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_profile(Path(temp))
+            info = ProfileInfo("ETS2 Automation Test", profile)
             self.assertEqual(
-                arguments[-3:], ["--start-stage", "home", "--dynamic-garage"]
+                validate_live_validation_request(
+                    FillRequest(profile=profile, slots=1), info, enabled=True
+                ),
+                [],
             )
+
+    def test_live_validation_rejects_normal_mode_larger_batch_and_other_profile(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_profile(Path(temp))
+            errors = validate_live_validation_request(
+                FillRequest(profile=profile, slots=5),
+                ProfileInfo("Main career", profile),
+                enabled=False,
+            )
+            self.assertEqual(len(errors), 3)
 
     def test_supervised_live_arguments_share_output_and_cancel_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -92,6 +115,7 @@ class FillRequestTests(unittest.TestCase):
             arguments[arguments.index("--cancel-file") + 1],
             str(run_dir / "cancel.requested"),
         )
+        self.assertIn("--require-empty-garage", arguments)
 
 
 if __name__ == "__main__":

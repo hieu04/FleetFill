@@ -273,3 +273,70 @@ so it cannot affect layout geometry. Terminal simulation, cancellation, and
 failure notices auto-dismiss after a short confirmation period; active runs
 retain the visible cooperative-cancel control. The success title also says
 **Simulation complete** rather than implying that a real garage was modified.
+
+## 15. Isolate the first desktop-controlled live validation
+
+The normal FleetFill launcher remains live-input locked. A separate developer
+launcher arms only the first supervised one-truck/one-driver run and makes that
+state visible in the top status pill and Setup note. Its policy is intentionally
+stricter than the eventual product:
+
+1. the selected and active career must be exactly `ETS2 Automation Test`;
+2. the request is fixed at one truck and one driver;
+3. the controller must dynamically locate a completely empty five-slot garage;
+4. the profile backup and shared cancellation marker must exist before input;
+5. the existing ten-second fullscreen return countdown remains in place.
+
+The desktop repeats the active-profile proof immediately before process launch,
+then runs the real controller through the already-tested `QProcess` supervisor.
+History distinguishes this from a simulation and records the controller report,
+backup path, and runtime validation report. Runtime validation requires one
+successful truck-confirm probe, one successful driver-confirm probe, two total
+guarded actions, and the exact EUR 249,985 planned spend.
+
+Runtime evidence alone cannot prove what ETS2 persisted. The save verifier was
+generalized for a one-pair change inside a five-slot garage: four untouched
+slots must remain untouched, exactly one truck/driver pair must appear, all
+other garages must retain their occupancy and driver arrays, and pre-existing
+truck configurations must remain identical. A separate finalizer refuses to
+run while ETS2 is open, copies the stable post-exit autosave without modifying
+the profile, decodes the before/after copies, and runs that semantic audit.
+
+The app suite now contains 42 tests and the controller/save-audit suite contains
+54, for 96 passing offline tests. No live input was sent while implementing or
+testing this boundary. The next step is the explicitly supervised real 1+1 run;
+general one-to-five desktop execution remains locked until its runtime and save
+evidence both pass.
+
+## 16. Complete the real desktop 1+1 validation
+
+The armed desktop boundary completed its first real run on the disposable local
+career. It dynamically selected a completely empty Salzburg garage and finished
+all 19 guarded UI transitions without an abort:
+
+- one saved Scania Streamline Topline was purchased;
+- one recruitment-agency driver was assigned to that truck in the same garage;
+- the controller recorded two of two intended transactions and EUR 249,985 of
+  expected spend;
+- the runtime evidence validator passed every backup, scope, step, transaction,
+  and cost check.
+
+After ETS2 exited normally, the independent finalizer decoded the encrypted
+before/after autosaves and passed every semantic check. Money changed from EUR
+76,537,256 to EUR 76,287,271. Company truck and driver totals each changed from
+138 to 139. Salzburg changed from five empty paired slots to exactly one paired
+truck/driver slot plus four untouched empty slots. All unrelated garage arrays
+and all 138 pre-existing truck configurations were preserved. The new truck had
+zero odometer and full fuel, and the hired driver was removed from the offers
+list with Salzburg as both hometown and current city.
+
+The run also exposed a harmless reporting artifact: dynamic selection retained
+the old fixed-garage placeholder label `Reims` even though visual identity and
+the persisted save both pointed to Salzburg. Dynamic runtime reports now use a
+neutral label, while the post-exit audit writes the authoritative garage ID back
+into History. History also refreshes when opened so evidence finalized by the
+external post-exit tool becomes visible without restarting FleetFill.
+
+This completes the small live-validation gate. Normal one-to-five desktop input
+remains locked while the proven safeguards are carried into the general launch
+policy.

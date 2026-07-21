@@ -15,6 +15,7 @@ DRIVER_HIRE_COST_EUR = 1_500
 SUPPORTED_GAME_VERSION = "1.60"
 SUPPORTED_RESOLUTION = "1920 x 1080"
 SUPPORTED_LANGUAGE = "English"
+VALIDATION_PROFILE_NAME = "ETS2 Automation Test"
 
 
 @dataclass(frozen=True)
@@ -120,6 +121,28 @@ def validate_request(request: FillRequest) -> list[str]:
     return errors
 
 
+def validate_live_validation_request(
+    request: FillRequest,
+    profile: ProfileInfo,
+    *,
+    enabled: bool,
+) -> list[str]:
+    """Apply the deliberately narrow gate for the first supervised live run."""
+
+    errors = validate_request(request)
+    if not enabled:
+        errors.append("The one-plus-one live validation launcher is not armed.")
+    if request.slots != 1:
+        errors.append("Live validation is limited to exactly one truck and one driver.")
+    if profile.name != VALIDATION_PROFILE_NAME:
+        errors.append(
+            f"Live validation requires the '{VALIDATION_PROFILE_NAME}' career."
+        )
+    if request.profile is not None and profile.path.resolve() != request.profile.resolve():
+        errors.append("The reviewed profile does not match the selected profile folder.")
+    return errors
+
+
 def controller_arguments(
     request: FillRequest,
     project_root: Path,
@@ -149,6 +172,7 @@ def controller_arguments(
         "--start-stage",
         "home",
         "--dynamic-garage",
+        "--require-empty-garage",
     ]
     if output_dir is not None:
         arguments.extend(

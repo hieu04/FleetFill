@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from datetime import datetime
+import json
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont
@@ -34,9 +35,11 @@ from fleetfill.domain import (
     TRUCK_PRICE_EUR,
     FillRequest,
     ProfileInfo,
+    controller_arguments,
     controller_command_preview,
     decode_profile_folder_name,
     discover_local_profiles,
+    validate_live_validation_request,
     validate_request,
     simulator_arguments,
 )
@@ -48,6 +51,7 @@ from fleetfill.runner import (
     read_history_records,
     write_history_record,
 )
+from fleetfill.validation import verify_one_plus_one_run
 
 
 def money(value: int) -> str:
@@ -81,11 +85,14 @@ def field_label(text: str) -> QLabel:
 class SetupPage(QWidget):
     plan_changed = Signal()
     simulation_requested = Signal(object, object)
+    live_validation_requested = Signal(object, object)
     cancel_requested = Signal()
 
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, *, live_validation_enabled: bool = False) -> None:
         super().__init__()
         self.project_root = project_root
+        self.live_validation_enabled = live_validation_enabled
+        self.run_is_simulation = True
         self.profiles: list[ProfileInfo] = []
 
         page = QVBoxLayout(self)
@@ -150,7 +157,8 @@ class SetupPage(QWidget):
         self.slots_combo = QComboBox()
         for count in range(1, 6):
             self.slots_combo.addItem(f"{count} slot{'s' if count != 1 else ''}", count)
-        self.slots_combo.setCurrentIndex(4)
+        self.slots_combo.setCurrentIndex(0 if live_validation_enabled else 4)
+        self.slots_combo.setEnabled(not live_validation_enabled)
         self.slots_combo.currentIndexChanged.connect(self._update_plan)
         self.driver_combo = QComboBox()
         self.driver_combo.addItem("First available")
@@ -222,13 +230,17 @@ class SetupPage(QWidget):
         self.review_button.setObjectName("primaryButton")
         self.review_button.clicked.connect(self._show_plan)
         review.addWidget(self.review_button)
-        integration_note = label(
-            "Plan-only build — live input remains locked.",
+        self.integration_note = label(
+            (
+                "Validation mode — exactly one truck and one driver."
+                if live_validation_enabled
+                else "Normal mode — live input remains locked."
+            ),
             "muted",
             word_wrap=True,
         )
-        integration_note.setFixedHeight(34)
-        review.addWidget(integration_note)
+        self.integration_note.setFixedHeight(34)
+        review.addWidget(self.integration_note)
 
         self.run_status_card, run_status = card_layout(amber=True)
         self.run_status_title = label("Preparing FleetFill", "warningText")
@@ -337,13 +349,14 @@ class SetupPage(QWidget):
     def show_run_status(self, state: RunnerState, message: str) -> None:
         """Expose transient progress without creating a permanent Running tab."""
 
+        terminal_kind = "Simulation" if self.run_is_simulation else "Live validation"
         titles = {
             RunnerState.PREFLIGHT: "Checking ETS2",
             RunnerState.COUNTDOWN: "Return to ETS2",
             RunnerState.RUNNING: "FleetFill is running",
             RunnerState.CANCEL_REQUESTED: "Stopping safely",
-            RunnerState.CANCELLED: "Simulation cancelled",
-            RunnerState.SUCCEEDED: "Simulation complete",
+            RunnerState.CANCELLED: f"{terminal_kind} cancelled",
+            RunnerState.SUCCEEDED: f"{terminal_kind} complete",
             RunnerState.FAILED: "FleetFill stopped",
             RunnerState.IDLE: "FleetFill is ready",
         }
@@ -359,6 +372,9 @@ class SetupPage(QWidget):
         self.run_status_card.raise_()
         if state in {RunnerState.SUCCEEDED, RunnerState.CANCELLED, RunnerState.FAILED}:
             self.status_hide_timer.start(3500)
+
+    def set_run_kind(self, *, simulated: bool) -> None:
+        self.run_is_simulation = simulated
 
     def _position_run_status(self) -> None:
         hint = self.run_status_card.sizeHint()
@@ -403,20 +419,43 @@ class SetupPage(QWidget):
             f"{preflight.summary}. FleetFill will buy {request.slots} matching "
             f"trucks and hire {request.slots} drivers into the same empty garage."
         )
-        message.setInformativeText(
-            f"Estimated total: {money(request.total_cost_eur)}\n\n"
-            "This build can now test the complete desktop lifecycle with a "
-            "no-input simulator. It will not click or control ETS2. Live "
-            "controller execution remains locked."
-        )
         message.setDetailedText(command)
-        simulate_button = message.addButton(
-            "Run safe simulation", QMessageBox.ButtonRole.AcceptRole
-        )
+        if self.live_validation_enabled:
+            live_errors = validate_live_validation_request(
+                request, profile, enabled=True
+            )
+            if live_errors:
+                QMessageBox.warning(
+                    self, "FleetFill validation locked", "\n".join(live_errors)
+                )
+                return
+            message.setWindowTitle("FleetFill live validation ready")
+            message.setIcon(QMessageBox.Icon.Warning)
+            message.setInformativeText(
+                f"Estimated spend: {money(request.total_cost_eur)}\n\n"
+                "This WILL control ETS2 after a 10-second countdown. It is "
+                "restricted to one truck and one driver on the disposable "
+                "Automation Test career. A timestamped backup is created first."
+            )
+            run_button = message.addButton(
+                "Start 1+1 live validation", QMessageBox.ButtonRole.AcceptRole
+            )
+        else:
+            message.setInformativeText(
+                f"Estimated total: {money(request.total_cost_eur)}\n\n"
+                "The normal app can test the desktop lifecycle with a no-input "
+                "simulator. It will not click or control ETS2."
+            )
+            run_button = message.addButton(
+                "Run safe simulation", QMessageBox.ButtonRole.AcceptRole
+            )
         message.addButton(QMessageBox.StandardButton.Cancel)
         message.exec()
-        if message.clickedButton() is simulate_button:
-            self.simulation_requested.emit(request, profile)
+        if message.clickedButton() is run_button:
+            if self.live_validation_enabled:
+                self.live_validation_requested.emit(request, profile)
+            else:
+                self.simulation_requested.emit(request, profile)
 
 
 class HistoryPage(QWidget):
@@ -459,6 +498,24 @@ class HistoryPage(QWidget):
             details += f"\nReason: {latest.error}"
         if latest.report_path:
             details += f"\nReport: {latest.report_path}"
+        if latest.backup_path:
+            details += f"\nBackup: {latest.backup_path}"
+        if latest.validation_passed is True:
+            details += "\nRuntime evidence: Passed."
+        elif latest.validation_passed is False:
+            details += "\nRuntime evidence: Failed. Do not continue to larger batches."
+        if latest.validation_report:
+            details += f"\nValidation: {latest.validation_report}"
+        if latest.save_audit_passed is True:
+            details += "\nSave audit: Passed."
+        elif latest.save_audit_passed is False:
+            details += "\nSave audit: Failed. Do not continue to larger batches."
+        elif latest.validation_passed is True:
+            details += "\nSave audit: Pending clean ETS2 exit."
+        if latest.save_audit_report:
+            details += f"\nSave audit report: {latest.save_audit_report}"
+        if latest.target_garage:
+            details += f"\nVerified garage: {latest.target_garage}"
         self.history_details.setText(details)
 
 
@@ -508,13 +565,15 @@ class SettingsPage(QWidget):
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, project_root: Path, *, live_validation_enabled: bool = False) -> None:
         super().__init__()
         self.project_root = project_root
+        self.live_validation_enabled = live_validation_enabled
         self.supervisor = ControllerProcessSupervisor(self)
         self._active_run_dir: Path | None = None
         self._active_profile_name = ""
         self._active_slots = 0
+        self._active_simulated = True
         self.setWindowTitle("FleetFill")
         self.setMinimumSize(1040, 680)
         self.resize(1180, 760)
@@ -542,7 +601,8 @@ class MainWindow(QMainWindow):
         brand_copy.addWidget(label("ETS2 garage automation", "muted"))
         top.addLayout(brand_copy)
         top.addStretch()
-        top.addWidget(label("●  Prototype  •  ETS2 1.60", "statusPill"))
+        mode = "1+1 validation armed" if live_validation_enabled else "Prototype"
+        top.addWidget(label(f"●  {mode}  •  ETS2 1.60", "statusPill"))
         shell.addWidget(top_bar)
 
         body = QHBoxLayout()
@@ -560,13 +620,16 @@ class MainWindow(QMainWindow):
         nav.addSpacing(4)
 
         self.stack = QStackedWidget()
-        self.setup_page = SetupPage(project_root)
+        self.setup_page = SetupPage(
+            project_root, live_validation_enabled=live_validation_enabled
+        )
         self.history_page = HistoryPage(project_root)
         self.settings_page = SettingsPage(project_root)
         self.stack.addWidget(self.setup_page)
         self.stack.addWidget(self.history_page)
         self.stack.addWidget(self.settings_page)
         self.setup_page.simulation_requested.connect(self._start_simulation)
+        self.setup_page.live_validation_requested.connect(self._start_live_validation)
         self.setup_page.cancel_requested.connect(self.supervisor.request_cancel)
         self.supervisor.state_changed.connect(self.setup_page.show_run_status)
         self.supervisor.run_finished.connect(self._finish_run)
@@ -578,7 +641,9 @@ class MainWindow(QMainWindow):
             button = QPushButton(title)
             button.setObjectName("navButton")
             button.setCheckable(True)
-            button.clicked.connect(lambda checked=False, page=index: self.stack.setCurrentIndex(page))
+            button.clicked.connect(
+                lambda checked=False, page=index: self._show_page(page)
+            )
             group.addButton(button)
             nav.addWidget(button)
             self.nav_buttons.append(button)
@@ -589,6 +654,11 @@ class MainWindow(QMainWindow):
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)
+
+    def _show_page(self, page: int) -> None:
+        if page == 1:
+            self.history_page.refresh()
+        self.stack.setCurrentIndex(page)
 
     def _start_simulation(self, request: FillRequest, profile: ProfileInfo) -> None:
         # The profile may have changed while the confirmation dialog was open.
@@ -608,6 +678,8 @@ class MainWindow(QMainWindow):
         self._active_run_dir = run_dir
         self._active_profile_name = profile.name
         self._active_slots = request.slots
+        self._active_simulated = True
+        self.setup_page.set_run_kind(simulated=True)
         self.setup_page.review_button.setEnabled(False)
         self.setup_page.show_run_status(
             RunnerState.COUNTDOWN,
@@ -620,20 +692,97 @@ class MainWindow(QMainWindow):
             simulated=True,
         )
 
+    def _start_live_validation(self, request: FillRequest, profile: ProfileInfo) -> None:
+        """Start only the separately armed, disposable-profile 1+1 path."""
+
+        errors = validate_live_validation_request(
+            request, profile, enabled=self.live_validation_enabled
+        )
+        preflight = assess_active_profile(profile)
+        self.setup_page._show_active_profile_result(preflight)
+        if errors or not preflight.passed:
+            problems = [*errors, *preflight.problems]
+            QMessageBox.warning(
+                self,
+                "FleetFill validation stopped safely",
+                "No process was started.\n\n" + "\n".join(problems),
+            )
+            return
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+        run_dir = (
+            self.project_root
+            / "research"
+            / "output"
+            / "desktop-runs"
+            / f"{stamp}-live-validation"
+        )
+        command = controller_arguments(request, self.project_root, run_dir)
+        self._active_run_dir = run_dir
+        self._active_profile_name = profile.name
+        self._active_slots = request.slots
+        self._active_simulated = False
+        self.setup_page.set_run_kind(simulated=False)
+        self.setup_page.review_button.setEnabled(False)
+        self.setup_page.show_run_status(
+            RunnerState.COUNTDOWN,
+            "Return to ETS2 now. Input begins after the controller's 10-second countdown.",
+        )
+        self.supervisor.start(
+            command,
+            run_dir,
+            2,
+            simulated=False,
+            live_enabled=self.live_validation_enabled,
+        )
+
     def _finish_run(self, model) -> None:
         self.setup_page.review_button.setEnabled(True)
         if self._active_run_dir is None:
             return
+        validation_passed = None
+        validation_report = None
+        if not self._active_simulated:
+            preflight_path = self._active_run_dir / "preflight.json"
+            try:
+                preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+                backup = preflight.get("backup", {}).get("backup")
+                if backup:
+                    model.backup_path = Path(backup)
+            except (OSError, ValueError, TypeError, json.JSONDecodeError):
+                pass
+            if model.state == RunnerState.SUCCEEDED:
+                try:
+                    evidence = verify_one_plus_one_run(self._active_run_dir)
+                    validation_passed = evidence.passed
+                    validation_report = evidence.report_path
+                    if evidence.passed:
+                        self.setup_page.show_run_status(
+                            RunnerState.SUCCEEDED,
+                            "Runtime evidence passed. Exit ETS2 cleanly for the save audit.",
+                        )
+                    else:
+                        model.error = "Runtime validation failed: " + ", ".join(
+                            evidence.problems
+                        )
+                        self.setup_page.show_run_status(RunnerState.FAILED, model.error)
+                except (OSError, ValueError, TypeError, json.JSONDecodeError) as error:
+                    validation_passed = False
+                    model.error = f"Runtime validation could not be completed: {error}"
+                    self.setup_page.show_run_status(RunnerState.FAILED, model.error)
         record = RunHistoryRecord.from_run(
             model,
             run_id=self._active_run_dir.name,
             profile_name=self._active_profile_name,
             slots=self._active_slots,
-            simulated=True,
+            simulated=self._active_simulated,
+            validation_passed=validation_passed,
+            validation_report=validation_report,
         )
         write_history_record(record, self._active_run_dir)
         self.history_page.refresh()
 
 
-def build_window(project_root: Path) -> MainWindow:
-    return MainWindow(project_root)
+def build_window(
+    project_root: Path, *, live_validation_enabled: bool = False
+) -> MainWindow:
+    return MainWindow(project_root, live_validation_enabled=live_validation_enabled)
