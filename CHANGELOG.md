@@ -72,6 +72,16 @@ not produced a public release yet.
   proof.
 - Eight additional cloud discovery, identity, snapshot, and controller-lock
   tests, bringing the full offline suite to 113 tests.
+- Persistent per-file snapshot manifests and sandbox-only restore rehearsal
+  with tamper detection and refusal to overwrite an existing destination.
+- Successful real-snapshot recovery rehearsal covering 104 cloud files, 9
+  Documents companion files, and Steam metadata without touching live paths.
+- A controller `--preflight-only` mode that proved the complete cloud snapshot,
+  restore, balance, and empty-garage path with zero probes or transactions.
+- A separately armed, explicitly named main-profile launcher restricted to one
+  truck and one driver, with full recovery and company checks before countdown.
+- Eleven additional recovery, policy, UI, argument, and finalizer tests,
+  bringing the full offline suite to 124 tests.
 - Thirteen validation, policy, launcher, discovery, and save-audit tests,
   bringing the full offline suite to 96 tests.
 
@@ -84,6 +94,9 @@ not produced a public release yet.
 - The existing live controller explicitly refuses Steam Cloud profile paths;
   the main-profile preflight has no automation call and always records whether
   input was sent.
+- Steam Cloud controller access requires a separate explicit flag, exact 1+1
+  fill scope, profile identity, companion path, metadata path, fresh snapshot,
+  and successful sandbox restore rehearsal.
 - Live plans require an explicit disposable profile and retain the controller's
   preflight-backup requirement.
 - Choosing a profile folder is not treated as proof of the active game career;

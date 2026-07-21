@@ -20,6 +20,7 @@ from ets2_batch_controller import (  # noqa: E402
     GarageState,
     ProbeRunner,
     build_parser,
+    create_steam_cloud_preflight_backup,
     expected_state_arguments,
     run_driver_phase,
     run_fill_phase,
@@ -53,6 +54,89 @@ class CooperativeCancellationTests(unittest.TestCase):
         self.assertEqual(result, 2)
         self.assertIn("Steam Cloud profiles require", output.getvalue())
         self.assertFalse(run_dir.exists())
+
+    def test_cloud_validation_flag_is_still_limited_to_one_plus_one(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "227300" / "remote" / "profiles" / "MAIN"
+            (profile / "save" / "autosave").mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            companion = root / "documents" / "steam_profiles" / "MAIN"
+            companion.mkdir(parents=True)
+            metadata = root / "227300" / "remotecache.vdf"
+            metadata.write_text("metadata", encoding="utf-8")
+            run_dir = root / "run"
+            args = build_parser().parse_args(
+                [
+                    "fill", "--execute", "--profile", str(profile),
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "5", "--start-stage", "home", "--dynamic-garage",
+                    "--output-dir", str(run_dir), "--allow-steam-cloud-validation",
+                    "--profile-name", "Primary", "--documents-companion", str(companion),
+                    "--steam-metadata", str(metadata),
+                ]
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = run_live(args)
+
+        self.assertEqual(result, 2)
+        self.assertIn("limited to one 1+1", output.getvalue())
+        self.assertFalse(run_dir.exists())
+
+    def test_cloud_preflight_backup_rehearses_full_recovery_set(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "227300" / "remote" / "profiles" / "MAIN"
+            autosave = profile / "save" / "autosave"
+            autosave.mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            (autosave / "game.sii").write_text("game", encoding="utf-8")
+            (autosave / "info.sii").write_text("info", encoding="utf-8")
+            companion = root / "documents" / "steam_profiles" / "MAIN"
+            companion.mkdir(parents=True)
+            (companion / "controls.sii").write_text("controls", encoding="utf-8")
+            metadata = root / "227300" / "remotecache.vdf"
+            metadata.write_text("metadata", encoding="utf-8")
+            run_dir = root / "run"
+            run_dir.mkdir()
+
+            backup = create_steam_cloud_preflight_backup(
+                profile,
+                "Primary",
+                companion,
+                metadata,
+                run_dir,
+            )
+
+        self.assertTrue(backup["snapshot_verified"])
+        self.assertTrue(backup["restore_rehearsal_verified"])
+        self.assertIn("game.sii", backup["autosave_files"])
+        self.assertTrue(backup["autosave"].endswith("save\\autosave"))
+
+    def test_preflight_only_exits_before_any_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "profile"
+            autosave = profile / "save" / "autosave"
+            autosave.mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            (autosave / "game.sii").write_text("test", encoding="utf-8")
+            run_dir = root / "run"
+            args = build_parser().parse_args(
+                [
+                    "trucks", "--execute", "--preflight-only", "--profile", str(profile),
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "1", "--start-stage", "home", "--dynamic-garage",
+                    "--output-dir", str(run_dir),
+                ]
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = run_live(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("no input sent", output.getvalue())
 
     def test_probe_runner_stops_before_spawning_next_probe(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

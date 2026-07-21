@@ -24,7 +24,11 @@ def load_run_paths(run_dir: Path) -> tuple[Path, Path, int]:
     if preflight.get("phase") != "fill" or not 1 <= count <= 5:
         raise ValueError("Run evidence is not a guarded one-to-five fill batch")
     profile = Path(preflight["backup"]["profile"])
-    before = Path(preflight["backup"]["backup"]) / "autosave" / "game.sii"
+    backup = preflight["backup"]
+    before_autosave = Path(
+        backup.get("autosave", Path(backup["backup"]) / "autosave")
+    )
+    before = before_autosave / "game.sii"
     if not profile.is_dir() or not before.is_file():
         raise ValueError("Run evidence does not contain a usable profile backup")
     return profile, before, count

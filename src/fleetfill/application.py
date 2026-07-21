@@ -43,6 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Arm guarded one-to-five batches on the disposable test profile",
     )
+    live_group.add_argument(
+        "--main-profile-validation",
+        metavar="CAREER_NAME",
+        help="Arm exactly one guarded 1+1 batch on the named Steam Cloud career",
+    )
     return parser
 
 
@@ -60,6 +65,7 @@ def main(argv: list[str] | None = None) -> int:
         project_root(),
         live_validation_enabled=args.live_validation,
         graduated_live_enabled=args.live_test,
+        main_profile_name=args.main_profile_validation,
     )
     page_index = {"setup": 0, "history": 1, "settings": 2}[args.page]
     window.stack.setCurrentIndex(page_index)

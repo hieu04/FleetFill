@@ -25,7 +25,9 @@ def verify_batch_run(run_dir: Path, *, expected_count: int) -> ValidationEvidenc
     output_path = run_dir / "validation-report.json"
     preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
     batch = json.loads(batch_path.read_text(encoding="utf-8"))
-    backup = Path(preflight.get("backup", {}).get("backup", ""))
+    backup_payload = preflight.get("backup", {})
+    backup = Path(backup_payload.get("backup", ""))
+    backup_autosave = Path(backup_payload.get("autosave", backup / "autosave"))
     company = preflight.get("company", {})
     breakdown = batch.get("transaction_breakdown", {})
     steps = batch.get("steps", [])
@@ -37,7 +39,7 @@ def verify_batch_run(run_dir: Path, *, expected_count: int) -> ValidationEvidenc
         "empty_garage_required": preflight.get("require_empty_garage") is True,
         "backup_directory_exists": backup.is_dir(),
         "backup_profile_exists": (backup / "profile.sii").is_file(),
-        "backup_autosave_exists": (backup / "autosave" / "game.sii").is_file(),
+        "backup_autosave_exists": (backup_autosave / "game.sii").is_file(),
         "company_balance_preflight_passed": company.get("money_eur", -1)
         >= expected_count * (TRUCK_PRICE_EUR + DRIVER_HIRE_COST_EUR)
         and company.get("planned_cost_eur")

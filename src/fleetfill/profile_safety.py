@@ -52,6 +52,29 @@ def _content_manifest(manifest: dict[str, ManifestEntry]) -> dict[str, tuple[int
     return {name: (entry.size, entry.sha256) for name, entry in manifest.items()}
 
 
+def _json_content_manifest(manifest: dict[str, ManifestEntry]) -> dict[str, dict]:
+    return {
+        name: {"size": entry.size, "sha256": entry.sha256}
+        for name, entry in manifest.items()
+    }
+
+
+def _snapshot_content(snapshot: Path) -> dict[str, object]:
+    cloud = directory_manifest(snapshot / "steam-cloud-profile")
+    companion = directory_manifest(snapshot / "documents-companion")
+    metadata = _file_entry(snapshot / "steam-metadata" / "remotecache.vdf")
+    return {
+        "steam_cloud_profile": _json_content_manifest(cloud),
+        "documents_companion": _json_content_manifest(companion),
+        "steam_metadata": {
+            "remotecache.vdf": {
+                "size": metadata.size,
+                "sha256": metadata.sha256,
+            }
+        },
+    }
+
+
 def create_steam_cloud_snapshot(profile: ProfileInfo, destination: Path) -> dict:
     """Copy and verify every recovery surface for one Steam Cloud profile."""
 
@@ -118,8 +141,93 @@ def create_steam_cloud_snapshot(profile: ProfileInfo, destination: Path) -> dict
         "metadata_bytes": metadata_before.size,
         "verified": True,
     }
+    manifest = {
+        "format": 1,
+        "profile_id": profile.path.name,
+        "content": _snapshot_content(destination),
+    }
+    (destination / "snapshot-manifest.json").write_text(
+        json.dumps(manifest, indent=2) + "\n",
+        encoding="utf-8",
+    )
     (destination / "snapshot-report.json").write_text(
         json.dumps(report, indent=2) + "\n",
         encoding="utf-8",
     )
     return report
+
+
+def rehearse_steam_cloud_restore(snapshot: Path, destination: Path) -> dict:
+    """Reconstruct a verified snapshot in a new sandbox and compare every hash."""
+
+    if destination.exists():
+        raise ProfileSnapshotError(f"Restore rehearsal destination already exists: {destination}")
+    report_path = snapshot / "snapshot-report.json"
+    if not report_path.is_file():
+        raise ProfileSnapshotError("The snapshot report is missing.")
+    try:
+        source_report = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise ProfileSnapshotError(f"The snapshot report is unreadable: {error}") from error
+    if source_report.get("verified") is not True:
+        raise ProfileSnapshotError("The source snapshot is not marked verified.")
+
+    manifest_path = snapshot / "snapshot-manifest.json"
+    if manifest_path.is_file():
+        try:
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            expected = manifest["content"]
+        except (OSError, json.JSONDecodeError, KeyError, TypeError) as error:
+            raise ProfileSnapshotError(f"The snapshot manifest is unreadable: {error}") from error
+        embedded_manifest = True
+        if _snapshot_content(snapshot) != expected:
+            raise ProfileSnapshotError("The snapshot no longer matches its embedded manifest.")
+    else:
+        # Snapshots created before content manifests were introduced remain usable
+        # as rehearsal inputs because their creation report already records a
+        # successful source/copy hash comparison.
+        expected = _snapshot_content(snapshot)
+        embedded_manifest = False
+
+    destination.mkdir(parents=True)
+    cloud_restore = destination / "authoritative-profile"
+    companion_restore = destination / "documents-companion"
+    metadata_restore = destination / "steam-metadata" / "remotecache.vdf"
+    shutil.copytree(snapshot / "steam-cloud-profile", cloud_restore)
+    shutil.copytree(snapshot / "documents-companion", companion_restore)
+    metadata_restore.parent.mkdir(parents=True)
+    shutil.copy2(snapshot / "steam-metadata" / "remotecache.vdf", metadata_restore)
+
+    restored = {
+        "steam_cloud_profile": _json_content_manifest(directory_manifest(cloud_restore)),
+        "documents_companion": _json_content_manifest(directory_manifest(companion_restore)),
+        "steam_metadata": {
+            "remotecache.vdf": {
+                "size": _file_entry(metadata_restore).size,
+                "sha256": _file_entry(metadata_restore).sha256,
+            }
+        },
+    }
+    if restored != expected:
+        raise ProfileSnapshotError("The sandbox reconstruction failed hash verification.")
+
+    cloud_files = expected["steam_cloud_profile"]
+    companion_files = expected["documents_companion"]
+    rehearsal = {
+        "snapshot": str(snapshot.resolve()),
+        "sandbox": str(destination.resolve()),
+        "source_snapshot_verified": True,
+        "embedded_manifest": embedded_manifest,
+        "cloud_files": len(cloud_files),
+        "cloud_bytes": sum(item["size"] for item in cloud_files.values()),
+        "companion_files": len(companion_files),
+        "companion_bytes": sum(item["size"] for item in companion_files.values()),
+        "metadata_bytes": expected["steam_metadata"]["remotecache.vdf"]["size"],
+        "verified": True,
+        "live_paths_touched": False,
+    }
+    (destination / "restore-rehearsal-report.json").write_text(
+        json.dumps(rehearsal, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return rehearsal

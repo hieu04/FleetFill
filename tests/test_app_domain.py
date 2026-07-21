@@ -15,6 +15,7 @@ from fleetfill.domain import (
     validate_request,
     validate_graduated_live_request,
     validate_live_validation_request,
+    validate_main_profile_validation_request,
 )
 
 
@@ -79,6 +80,23 @@ class FillRequestTests(unittest.TestCase):
         (profile / "save" / "autosave").mkdir(parents=True)
         (profile / "profile.sii").write_text("profile", encoding="utf-8")
         return profile
+
+    def make_cloud_profile(self, root: Path) -> ProfileInfo:
+        profile = root / "227300" / "remote" / "profiles" / "5072696D617279"
+        (profile / "save" / "autosave").mkdir(parents=True)
+        (profile / "profile.sii").write_text("profile", encoding="utf-8")
+        companion = root / "documents" / "steam_profiles" / profile.name
+        companion.mkdir(parents=True)
+        metadata = root / "227300" / "remotecache.vdf"
+        metadata.write_text("metadata", encoding="utf-8")
+        return ProfileInfo(
+            "Primary",
+            profile,
+            storage=STEAM_CLOUD_PROFILE_STORAGE,
+            documents_root=root / "documents",
+            companion_path=companion,
+            steam_metadata_path=metadata,
+        )
 
     def test_calculates_exact_five_plus_five_cost(self) -> None:
         request = FillRequest(profile=Path("profile"), slots=5)
@@ -151,6 +169,49 @@ class FillRequestTests(unittest.TestCase):
                 request, ProfileInfo("Main career", profile), enabled=True
             )
             self.assertEqual(len(errors), 1)
+
+    def test_main_profile_validation_requires_exact_cloud_one_plus_one(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            request = FillRequest(profile=profile.path, slots=1)
+
+            self.assertEqual(
+                validate_main_profile_validation_request(
+                    request,
+                    profile,
+                    enabled=True,
+                    expected_profile_name="Primary",
+                ),
+                [],
+            )
+            errors = validate_main_profile_validation_request(
+                FillRequest(profile=profile.path, slots=5),
+                profile,
+                enabled=True,
+                expected_profile_name="Wrong Career",
+            )
+            self.assertTrue(any("exactly one" in error for error in errors))
+            self.assertTrue(any("Wrong Career" in error for error in errors))
+
+    def test_cloud_controller_arguments_carry_every_recovery_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            arguments = controller_arguments(
+                FillRequest(profile=profile.path, slots=1),
+                Path("project"),
+                steam_cloud_profile=profile,
+            )
+
+        self.assertIn("--allow-steam-cloud-validation", arguments)
+        self.assertEqual(arguments[arguments.index("--profile-name") + 1], "Primary")
+        self.assertEqual(
+            arguments[arguments.index("--documents-companion") + 1],
+            str(profile.companion_path),
+        )
+        self.assertEqual(
+            arguments[arguments.index("--steam-metadata") + 1],
+            str(profile.steam_metadata_path),
+        )
 
     def test_supervised_live_arguments_share_output_and_cancel_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

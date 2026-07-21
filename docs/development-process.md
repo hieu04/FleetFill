@@ -421,3 +421,40 @@ batch controller now explicitly refuses Steam Cloud profile paths. The full
 offline suite contains 54 desktop/domain tests and 59 controller/save tests, for
 113 passing tests. Main-profile live input remains locked until a separate 1+1
 launcher and equivalent post-exit audit boundary are reviewed.
+
+## 20. Rehearse recovery and isolate the main-profile 1+1 gate
+
+A backup is not proven merely because it can be copied. FleetFill now writes a
+snapshot content manifest containing the relative path, size, and SHA-256 of
+every authoritative profile and Documents companion file plus Steam metadata.
+The recovery rehearsal accepts only a snapshot whose creation report passed,
+refuses an existing destination, verifies the snapshot against its embedded
+manifest, reconstructs all three surfaces in a new sandbox, and hashes the
+result independently. It has no operation that overwrites a live Steam path.
+
+The first rehearsal used the verified real main-profile snapshot from the
+zero-input milestone. It reconstructed all 104 cloud files, 9 companion files,
+and the metadata file byte for byte while recording `live_paths_touched: false`.
+The older snapshot predated embedded manifests, so the rehearsal derived its
+expected hashes from that already verified copy; all future snapshots embed the
+manifest directly.
+
+The controller gained a `--preflight-only` mode to exercise the exact recovery
+and company path without reaching its countdown. A Steam-shaped isolated copy
+of the real snapshot passed the fresh snapshot, sandbox restore, EUR 249,985
+1+1 affordability, and 45-empty-garage checks. The resulting checkpoint had
+status `preflight_completed`, zero completed transactions, and zero UI steps.
+
+Finally, the desktop now has a separate named Steam Cloud validation mode. It
+forces one slot, disables browsing, requires the exact discovered cloud career
+and loaded autosave, passes every recovery surface explicitly to the controller,
+and carries a cloud flag that the controller accepts only for one unified 1+1
+fill. Normal, local 1+1, and disposable one-to-five launchers cannot cross this
+policy accidentally. Runtime validation and the post-exit finalizer now use an
+explicit autosave evidence path so both local and full cloud snapshot layouts
+resolve correctly.
+
+The offline suite now contains 61 desktop/domain tests and 63 controller/save
+tests, for 124 passing tests. The main-profile launcher is implemented but has
+not yet performed a real transaction; that remains a separately supervised
+milestone requiring the operator to stop driving and explicitly arm the run.

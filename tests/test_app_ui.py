@@ -4,6 +4,7 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -15,6 +16,7 @@ from fleetfill.runner import (  # noqa: E402
     SupervisedRun,
     write_history_record,
 )
+from fleetfill.domain import ProfileInfo, STEAM_CLOUD_PROFILE_STORAGE  # noqa: E402
 from fleetfill.ui import MainWindow  # noqa: E402
 
 
@@ -62,6 +64,27 @@ class MainWindowTests(unittest.TestCase):
             self.assertTrue(page.slots_combo.isEnabled())
             self.assertIn("Live test mode", page.integration_note.text())
             self.assertEqual(page.total_value.text(), "€1,249,925")
+        finally:
+            window.close()
+
+    def test_main_profile_mode_is_named_visible_and_forces_one_slot(self) -> None:
+        profile = ProfileInfo(
+            "Primary Career",
+            Path("cloud-profile"),
+            storage=STEAM_CLOUD_PROFILE_STORAGE,
+            documents_root=Path("documents"),
+            companion_path=Path("companion"),
+            steam_metadata_path=Path("remotecache.vdf"),
+        )
+        with patch("fleetfill.ui.discover_steam_cloud_profiles", return_value=[profile]):
+            window = MainWindow(Path.cwd(), main_profile_name="Primary Career")
+        try:
+            page = window.setup_page
+            self.assertEqual(page.slots_combo.currentData(), 1)
+            self.assertFalse(page.slots_combo.isEnabled())
+            self.assertFalse(page.browse_button.isEnabled())
+            self.assertIn("Main-profile validation", page.integration_note.text())
+            self.assertEqual(page.current_profile_info(), profile)
         finally:
             window.close()
 

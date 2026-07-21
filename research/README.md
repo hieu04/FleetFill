@@ -114,6 +114,29 @@ recovery snapshot, and runs company inspection only against the copied autosave:
 The local-only batch controller refuses authoritative Steam Cloud paths. This
 preflight does not import or invoke any UI probe and reports `input_sent: false`.
 
+A verified snapshot can be reconstructed only into a new sandbox destination:
+
+```powershell
+python .\research\tools\rehearse_main_profile_restore.py `
+  "C:\path\to\recovery-snapshot" `
+  --output-dir "C:\path\to\new-sandbox"
+```
+
+The rehearsal checks the embedded per-file content manifest when present,
+copies all three recovery surfaces, and independently hashes the reconstruction.
+It contains no live-path overwrite operation.
+
+The developer-only main-profile launcher is fixed to one 1+1 transaction and
+requires an explicit career name:
+
+```powershell
+.\scripts\run-fleetfill-main-validation.ps1 -ProfileName "Your career name"
+```
+
+The controller repeats the full snapshot and restore rehearsal before company
+inspection and countdown. `--preflight-only` exercises this exact path and exits
+before any UI probe.
+
 ## Read-only save inspection
 
 `tools/decrypt_scs_file.py` turns an encrypted `ScsC` SII file into a separate
