@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from fleetfill import __version__
 from fleetfill.domain import (
     DRIVER_HIRE_COST_EUR,
+    MAIN_PROFILE_VALIDATION_BOUNDARIES,
     SUPPORTED_GAME_VERSION,
     SUPPORTED_LANGUAGE,
     SUPPORTED_RESOLUTION,
@@ -101,8 +102,11 @@ class SetupPage(QWidget):
         main_profile_slots: int = 1,
     ) -> None:
         super().__init__()
-        if main_profile_name and main_profile_slots not in (1, 2):
-            raise ValueError("Main-profile validation supports only 1+1 or 2+2")
+        if (
+            main_profile_name
+            and main_profile_slots not in MAIN_PROFILE_VALIDATION_BOUNDARIES
+        ):
+            raise ValueError("Main-profile validation supports only 1+1, 2+2, or 3+3")
         self.project_root = project_root
         self.live_validation_enabled = live_validation_enabled
         self.graduated_live_enabled = graduated_live_enabled
@@ -694,8 +698,11 @@ class MainWindow(QMainWindow):
         main_profile_slots: int = 1,
     ) -> None:
         super().__init__()
-        if main_profile_name and main_profile_slots not in (1, 2):
-            raise ValueError("Main-profile validation supports only 1+1 or 2+2")
+        if (
+            main_profile_name
+            and main_profile_slots not in MAIN_PROFILE_VALIDATION_BOUNDARIES
+        ):
+            raise ValueError("Main-profile validation supports only 1+1, 2+2, or 3+3")
         enabled_modes = sum(
             (bool(live_validation_enabled), bool(graduated_live_enabled), bool(main_profile_name))
         )

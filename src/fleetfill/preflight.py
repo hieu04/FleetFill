@@ -61,6 +61,15 @@ class ProfilePreflight:
     log_path: Path | None = None
 
 
+@dataclass(frozen=True)
+class SaveBaselineEvidence:
+    """A save slot written by the currently running ETS2 process."""
+
+    slot: str
+    game_path: Path
+    modified_at: float
+
+
 def parse_latest_profile_evidence(log_text: str) -> ActiveProfileEvidence | None:
     """Parse only the latest selection attempt, never an older matching profile."""
 
@@ -182,6 +191,36 @@ def is_ets2_running() -> bool:
     return _ets2_process_id() is not None
 
 
+def ets2_process_started_at() -> float | None:
+    """Return the current ETS2 process start time as a Unix timestamp."""
+
+    process_id = _ets2_process_id()
+    return _process_started_at(process_id) if process_id is not None else None
+
+
+def newest_session_save(
+    profile: ProfileInfo, process_started_at: float
+) -> SaveBaselineEvidence | None:
+    """Find the newest save written after the current ETS2 session began."""
+
+    save_root = profile.path / "save"
+    candidates: list[SaveBaselineEvidence] = []
+    if save_root.is_dir():
+        for game_path in save_root.glob("*/game.sii"):
+            try:
+                modified_at = game_path.stat().st_mtime
+            except OSError:
+                continue
+            candidates.append(
+                SaveBaselineEvidence(game_path.parent.name, game_path, modified_at)
+            )
+    if not candidates:
+        return None
+    newest = max(candidates, key=lambda candidate: candidate.modified_at)
+    # NTFS and process timestamps can differ by a small fraction of a second.
+    return newest if newest.modified_at >= process_started_at - 5 else None
+
+
 def assess_active_profile(
     profile: ProfileInfo,
     *,
@@ -226,6 +265,17 @@ def assess_active_profile(
     if evidence is None:
         problems.append("No profile-selection evidence exists in the current ETS2 log.")
         return ProfilePreflight(False, "Active profile not verified", tuple(problems), log_path=path)
+
+    if (
+        profile.storage == STEAM_CLOUD_PROFILE_STORAGE
+        and process_started_at is not None
+        and newest_session_save(profile, process_started_at) is None
+    ):
+        problems.append(
+            "The Steam Cloud career has not been saved during this ETS2 session. "
+            "Save the game once after World of Trucks finishes synchronizing, then "
+            "return to the home screen."
+        )
 
     expected_id = profile.path.name
     if evidence.profile_name != profile.name:

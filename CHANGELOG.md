@@ -84,6 +84,14 @@ not produced a public release yet.
   bringing the full offline suite to 124 tests.
 - Thirteen validation, policy, launcher, discovery, and save-audit tests,
   bringing the full offline suite to 96 tests.
+- Separately locked and certified Steam Cloud 2+2 and 3+3 main-profile
+  boundaries with exact-count desktop, controller, runtime, and save-audit
+  authorization.
+- Current-session save selection across all ETS2 save slots, preventing a stale
+  cloud autosave from serving as recovery or delivery-preservation evidence.
+- Successful synchronized 3+3 certification in Kiel with an exact EUR 749,955
+  deduction, three matching trucks, three drivers, and an unchanged World of
+  Trucks delivery fingerprint.
 
 ### Safety
 

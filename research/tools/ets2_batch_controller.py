@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Sequence
 
 from fleetfill.domain import STEAM_CLOUD_PROFILE_STORAGE, ProfileInfo
+from fleetfill.preflight import ets2_process_started_at, newest_session_save
 from fleetfill.profile_safety import (
     ProfileSnapshotError,
     create_steam_cloud_snapshot,
@@ -294,6 +295,7 @@ def create_steam_cloud_preflight_backup(
     documents_companion: Path,
     steam_metadata: Path,
     destination: Path,
+    baseline_slot: str = "autosave",
 ) -> dict:
     """Create and rehearse the complete cloud recovery set before UI input."""
 
@@ -309,10 +311,17 @@ def create_steam_cloud_preflight_backup(
     rehearsal = destination / "preflight-restore-rehearsal"
     rehearsal_report = rehearse_steam_cloud_restore(snapshot, rehearsal)
     cloud_backup = snapshot / "steam-cloud-profile"
+    baseline_save = cloud_backup / "save" / baseline_slot
+    if not (baseline_save / "game.sii").is_file():
+        raise BatchAbort(
+            f"Fresh Steam Cloud baseline was not copied: {baseline_save}"
+        )
     return {
         "profile": str(profile.resolve()),
         "backup": str(cloud_backup.resolve()),
         "autosave": str((cloud_backup / "save" / "autosave").resolve()),
+        "baseline_slot": baseline_slot,
+        "baseline_save": str(baseline_save.resolve()),
         "recovery_snapshot": str(snapshot.resolve()),
         "restore_rehearsal": str(rehearsal.resolve()),
         "snapshot_verified": snapshot_report["verified"],
@@ -357,8 +366,13 @@ def inspect_preflight_company(
     """Decode only the backup copy and record a read-only company summary."""
 
     inspector = tools_dir / "save-inspector"
-    autosave = Path(backup.get("autosave", Path(backup["backup"]) / "autosave"))
-    source = autosave / "game.sii"
+    baseline_save = Path(
+        backup.get(
+            "baseline_save",
+            backup.get("autosave", Path(backup["backup"]) / "autosave"),
+        )
+    )
+    source = baseline_save / "game.sii"
     decoded = run_dir / "preflight-company-game.txt"
     report = run_dir / "preflight-company.json"
     commands = [
@@ -751,6 +765,10 @@ def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
         "--allow-steam-cloud-two-validation",
         action="store_true",
     )
+    cloud_validation.add_argument(
+        "--allow-steam-cloud-three-validation",
+        action="store_true",
+    )
     parser.add_argument("--profile-name")
     parser.add_argument("--documents-companion", type=Path)
     parser.add_argument("--steam-metadata", type=Path)
@@ -872,7 +890,18 @@ def run_live(args: argparse.Namespace) -> int:
     cloud_two_allowed = bool(
         getattr(args, "allow_steam_cloud_two_validation", False)
     )
-    cloud_expected_count = 1 if cloud_one_allowed else 2 if cloud_two_allowed else None
+    cloud_three_allowed = bool(
+        getattr(args, "allow_steam_cloud_three_validation", False)
+    )
+    cloud_expected_count = (
+        1
+        if cloud_one_allowed
+        else 2
+        if cloud_two_allowed
+        else 3
+        if cloud_three_allowed
+        else None
+    )
     cloud_allowed = cloud_expected_count is not None
     if cloud_profile and not cloud_allowed:
         print(
@@ -958,12 +987,32 @@ def run_live(args: argparse.Namespace) -> int:
         return 2
     try:
         if cloud_profile:
+            process_started_at = ets2_process_started_at()
+            if process_started_at is None:
+                raise BatchAbort(
+                    "The current ETS2 process start time could not be verified"
+                )
+            baseline = newest_session_save(
+                ProfileInfo(
+                    args.profile_name,
+                    args.profile.resolve(),
+                    storage=STEAM_CLOUD_PROFILE_STORAGE,
+                ),
+                process_started_at,
+            )
+            if baseline is None:
+                raise BatchAbort(
+                    "The Steam Cloud career has not been saved during this ETS2 "
+                    "session. Save once after World of Trucks synchronizes, then "
+                    "return to the home screen."
+                )
             backup = create_steam_cloud_preflight_backup(
                 args.profile.resolve(),
                 args.profile_name,
                 args.documents_companion.resolve(),
                 args.steam_metadata.resolve(),
                 run_dir,
+                baseline.slot,
             )
         else:
             backup = create_preflight_backup(args.profile.resolve(), run_dir)

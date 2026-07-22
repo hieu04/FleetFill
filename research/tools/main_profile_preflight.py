@@ -11,7 +11,11 @@ from datetime import datetime
 from pathlib import Path
 
 from fleetfill.domain import discover_steam_cloud_profiles
-from fleetfill.preflight import assess_active_profile
+from fleetfill.preflight import (
+    assess_active_profile,
+    ets2_process_started_at,
+    newest_session_save,
+)
 from fleetfill.profile_safety import ProfileSnapshotError, create_steam_cloud_snapshot
 
 from ets2_batch_controller import BatchAbort, validate_company_preflight
@@ -41,9 +45,9 @@ def select_exact_profile(profile_name: str):
     return matches[0]
 
 
-def inspect_snapshot(snapshot: Path, tools_dir: Path) -> dict:
-    source = snapshot / "steam-cloud-profile" / "save" / "autosave" / "game.sii"
-    decoded = snapshot / "decoded-autosave.sii"
+def inspect_snapshot(snapshot: Path, tools_dir: Path, save_slot: str = "autosave") -> dict:
+    source = snapshot / "steam-cloud-profile" / "save" / save_slot / "game.sii"
+    decoded = snapshot / f"decoded-{save_slot}.sii"
     report = snapshot / "company-report.json"
     commands = [
         ["node", str(tools_dir / "save-inspector" / "decrypt-save.mjs"), str(source), str(decoded)],
@@ -94,9 +98,23 @@ def main(argv: list[str] | None = None) -> int:
         }
         if not active.passed:
             raise ProfileSnapshotError("; ".join(active.problems))
+        process_started_at = ets2_process_started_at()
+        if process_started_at is None:
+            raise ProfileSnapshotError(
+                "The current ETS2 process start time could not be verified."
+            )
+        baseline = newest_session_save(profile, process_started_at)
+        if baseline is None:
+            raise ProfileSnapshotError(
+                "The Steam Cloud career has not been saved during this ETS2 session."
+            )
         snapshot = output / "recovery-snapshot"
         result["snapshot"] = create_steam_cloud_snapshot(profile, snapshot)
-        company = inspect_snapshot(snapshot, tools_dir)
+        result["baseline_save"] = {
+            "slot": baseline.slot,
+            "modified_at": baseline.modified_at,
+        }
+        company = inspect_snapshot(snapshot, tools_dir, baseline.slot)
         result["company"] = validate_company_preflight(company, args.count)
         result["passed"] = True
     except (ProfileSnapshotError, BatchAbort, OSError, ValueError, json.JSONDecodeError) as error:

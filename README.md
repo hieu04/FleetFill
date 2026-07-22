@@ -124,9 +124,9 @@ python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
 
 The same two suites run automatically on Windows for every pull request and
-every push to `main`. CI enforces 149 portable tests; seven calibrated visual
+every push to `main`. CI enforces 161 portable tests; seven calibrated visual
 tests report as skipped because their private ETS2 recording evidence remains
-in ignored local output. The full local run contains 156 tests. The required
+in ignored local output. The full local run contains 168 tests. The required
 status-check context is `Windows test suite`, produced by the `FleetFill tests`
 workflow.
 
@@ -163,15 +163,18 @@ save contains at least one completely empty large garage. The normal launcher
 and main/Steam Cloud profiles remain live-input locked.
 
 The separate main-profile preflight contains no automation call. It requires an
-exact active `PC_steam_cloud` career, proves the `/steam/profiles/<id>` autosave,
-copies the complete cloud profile plus its Documents companion and Steam
-metadata, verifies every copied file by SHA-256, and inspects only that copy:
+exact active `PC_steam_cloud` career and a save written during the current ETS2
+process. It copies the complete cloud profile plus its Documents companion and
+Steam metadata, verifies every copied file by SHA-256, and inspects only the
+freshest copied current-session save:
 
 ```powershell
 .\scripts\run-main-profile-preflight.ps1 -ProfileName "Your career name"
 ```
 
-This command does not move the mouse or unlock the batch controller.
+This command does not move the mouse or unlock the batch controller. If World of
+Trucks has synchronized newer live state, save once and return to the home screen;
+FleetFill fails closed until that state exists in a recoverable save slot.
 
 The certified developer-only launcher is restricted to exactly one truck and
 one driver on an explicitly named Steam Cloud career:
@@ -192,10 +195,26 @@ and two drivers:
 .\scripts\run-fleetfill-main-two-validation.ps1 -ProfileName "Your career name"
 ```
 
-The 1+1 and 2+2 launchers use mutually exclusive controller authorization
-flags. Neither can request the other's count, and Steam Cloud counts above two
-remain input-locked. The 2+2 path has passed its supervised four-action runtime
-and independent post-exit semantic save audit.
+The certified 1+1 and 2+2 launchers use mutually exclusive controller
+authorization flags, and neither can request the other's count. The 2+2 path
+has passed its supervised four-action runtime and independent post-exit semantic
+save audit. Counts above two remain locked except for the separately armed 3+3
+boundary below.
+
+The next graduated boundary is a separate launcher fixed to exactly three
+trucks and three drivers:
+
+```powershell
+.\scripts\run-fleetfill-main-three-validation.ps1 -ProfileName "Your career name"
+```
+
+It uses a third mutually exclusive authorization and cannot request any count
+other than three. Its first supervised six-action run completed successfully,
+but the deep audit found that its preflight autosave predated the live World of
+Trucks state by more than twelve hours. FleetFill now requires and records a save
+written during the current game process. The synchronized repeat then passed all
+six actions and every post-exit invariant, certifying the 3+3 boundary.
+Main-profile counts four and five remain input-locked.
 
 The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
@@ -204,15 +223,15 @@ the exact truck-and-driver estimate, and exposes a guarded review workflow.
 Before review, the local live launchers prove from the current `game.log.txt`
 that ETS2 is running, the selected career is `PC_local`, and the matching local
 autosave was loaded after selection. The zero-input cloud boundary separately
-requires `PC_steam_cloud`, Steam storage, and the exact cloud folder ID. A stale
-log, wrong storage type, different folder, or merely highlighted career fails
-closed.
+requires `PC_steam_cloud`, Steam storage, the exact cloud folder ID, and a save
+written after the current ETS2 process began. A stale log or save, wrong storage
+type, different folder, or merely highlighted career fails closed.
 
 The Qt process supervisor launches a no-input lifecycle simulator, streams
 its output and checkpoint file without freezing the UI, supports cooperative
 cancellation, and writes durable History records. The real controller uses the
 same cancellation marker between guarded probes. Normal desktop execution is
-still centrally locked; only the explicit 1+1 and 2+2 validation launchers can
+still centrally locked; only the explicit 1+1, 2+2, and 3+3 validation launchers can
 cross their exact live boundaries.
 
 The save-inspector helper uses Node.js and a pinned dependency:
@@ -259,7 +278,10 @@ and job fines when ETS2 advances company time during management screens. Normal
 main-profile input remains locked while larger graduated batches are evaluated.
 The separate 2+2 boundary is now certified as well: it filled two Aarhus slots
 with matching trucks and drivers while preserving the active World of Trucks
-delivery and all unrelated company state. Normal three-to-five main-profile
+delivery and all unrelated company state. The isolated 3+3 boundary is now
+certified as well: its synchronized repeat filled three Kiel slots, reconciled
+the exact EUR 749,955 cost, and preserved the complete World of Trucks delivery
+fingerprint plus all 129 pre-existing trucks. Normal four-to-five main-profile
 input remains locked.
 Packaging follows later.
 

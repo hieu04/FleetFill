@@ -628,3 +628,66 @@ Trucks job retained the same ID, cargo, route, loaded trailer, attachment state,
 and player vehicle placements. With runtime and semantic audits both passing,
 the exact 2+2 Steam Cloud boundary is certified; counts three through five remain
 input-locked on main profiles.
+
+## 28. Isolate the main-profile 3+3 boundary
+
+After merging the certified 2+2 work through pull request 8, FleetFill added a
+third explicit main-profile boundary without exposing a general cloud-profile
+slot selector. The desktop flag, PowerShell launcher, UI lock, domain validator,
+and controller authorization all force exactly three trucks and three drivers.
+The three cloud authorizations are mutually exclusive, and counts four and five
+remain unreachable on main profiles.
+
+The recovery and audit pipeline remains count-aware. Zero-input preflight plans
+EUR 749,955, runtime evidence expects six completed transactions, and the clean
+exit verifier requires exactly three paired slot changes in one previously empty
+five-slot garage while preserving its other two slots and all unrelated state.
+
+The initial offline 3+3 boundary had 74 desktop/domain tests and 91
+controller/save-audit tests. The fresh-session baseline hardening raised those
+counts to 76 and 92, for 168 passing local tests. Seven private visual-recording
+tests remain declared skips on hosted runners, so CI enforces 161 portable tests.
+The boundary is not live-certified until its zero-input preflight, supervised
+runtime, and independent clean-exit audit all pass.
+
+## 29. Require a save written by the current Steam Cloud session
+
+The first supervised 3+3 attempt completed all six guarded transactions and put
+three matching truck/driver pairs into one empty garage. Its deep audit correctly
+refused certification because the recovery baseline was not current: plain
+`autosave` had last been written more than twelve hours before the run. World of
+Trucks had since synchronized a different active contract into memory, so clean
+exit persisted a different job ID, four kilometres of live progress, a EUR 4,940
+offence, and EUR 65 of other pre-existing session activity. None of those changes
+belonged to FleetFill, but the stale before-image could not prove that fact.
+
+FleetFill now requires a save slot written after the current ETS2 process began
+before any cloud-profile input is authorized. It searches every save slot rather
+than assuming plain `autosave`, records the selected slot as `baseline_save` in
+the recovery evidence, inspects that copied slot for balance and garage capacity,
+and compares it with the normal clean-exit autosave afterward. If World of Trucks
+has synchronized but ETS2 has not saved the resulting live state, preflight stops
+and instructs the operator to save once and return to the home screen.
+
+The verifier still rejects a changed World of Trucks job ID; no delivery invariant
+was weakened to make the inconclusive attempt pass. The first 3+3 batch is retained
+as successful transaction evidence, while certification waits for a repeat from a
+fresh, synchronized baseline.
+
+## 30. Certify the main-profile 3+3 boundary
+
+The synchronized repeat completed all six guarded transactions and filled slots
+zero through two of the previously empty Kiel garage. Its EUR 749,955 deduction
+reconciled exactly, the online truck-purchase counter rose from 136 to 139, and
+company truck and driver counts rose from 129 to 132 and 127 to 130 respectively.
+
+All three new Scania Streamline Topline trucks share the same 37-accessory
+configuration, full fuel, and zero odometer. Their three drivers are based in
+Kiel. Every unrelated garage slot and all 129 pre-existing truck configurations
+remained unchanged.
+
+Most importantly, the fresh baseline and clean-exit save contain the same World
+of Trucks job ID and identical complete delivery fingerprints. Runtime validation
+and every semantic save invariant passed, so the exact 3+3 Steam Cloud boundary
+is certified. Counts four and five remain input-locked pending the next isolated
+maximum-capacity boundary.

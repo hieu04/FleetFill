@@ -34,6 +34,17 @@ class FillBatchSlotDiffTests(unittest.TestCase):
         }
         self.assertEqual(changed_slot_indexes(before, after), [0, 1])
 
+    def test_three_plus_three_changes_exactly_three_paired_indexes(self) -> None:
+        before = {
+            "vehicles": ["null"] * 5,
+            "drivers": ["null"] * 5,
+        }
+        after = {
+            "vehicles": ["vehicle.1", "vehicle.2", "vehicle.3", "null", "null"],
+            "drivers": ["driver.1", "driver.2", "driver.3", "null", "null"],
+        }
+        self.assertEqual(changed_slot_indexes(before, after), [0, 1, 2])
+
     def test_shape_mismatch_fails_closed(self) -> None:
         before = {"vehicles": ["null"] * 5, "drivers": ["null"] * 5}
         after = {"vehicles": ["vehicle.1"], "drivers": ["driver.1"]}
