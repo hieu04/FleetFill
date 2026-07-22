@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
+
+from fleetfill.runtime import python_executable
 
 
 TRUCK_PRICE_EUR = 248_485
@@ -337,6 +338,34 @@ def validate_main_profile_validation_request(
     return errors
 
 
+def validate_personal_beta_request(
+    request: FillRequest,
+    profile: ProfileInfo,
+    *,
+    enabled: bool,
+) -> list[str]:
+    """Gate the fixed-scope personal beta to the certified cloud 5+5 path."""
+
+    errors = validate_request(request)
+    if not enabled:
+        errors.append("The FleetFill personal beta is not armed.")
+    if request.slots != 5:
+        errors.append(
+            "The personal beta is limited to exactly five trucks and five drivers."
+        )
+    if not profile.is_steam_cloud:
+        errors.append("The personal beta requires an authoritative Steam Cloud profile.")
+    if profile.documents_root is None:
+        errors.append("The ETS2 Documents root for the cloud career is missing.")
+    if profile.companion_path is None or not profile.companion_path.is_dir():
+        errors.append("The Documents-side Steam profile companion is missing.")
+    if profile.steam_metadata_path is None or not profile.steam_metadata_path.is_file():
+        errors.append("Steam remotecache.vdf metadata is missing.")
+    if request.profile is not None and profile.path.resolve() != request.profile.resolve():
+        errors.append("The reviewed cloud profile does not match the selected folder.")
+    return errors
+
+
 def controller_arguments(
     request: FillRequest,
     project_root: Path,
@@ -349,7 +378,7 @@ def controller_arguments(
     if request.profile is None:
         raise ValueError("A profile is required to build the controller command")
     arguments = [
-        sys.executable,
+        str(python_executable()),
         str(project_root / "research" / "tools" / "ets2_batch_controller.py"),
         "fill",
         "--execute",
@@ -438,7 +467,7 @@ def simulator_arguments(
     step_delay: float = 0.15,
 ) -> list[str]:
     arguments = [
-        sys.executable,
+        str(python_executable()),
         "-m",
         "fleetfill.simulated_controller",
         "--output-dir",

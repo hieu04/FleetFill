@@ -17,6 +17,8 @@ research/tools/save-inspector/node_modules/
 *.py[cod]
 .venv/
 venv/
+packaging/build/
+packaging/dist/
 .env
 .env.*
 *.log

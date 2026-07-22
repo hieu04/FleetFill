@@ -735,3 +735,34 @@ and every semantic save invariant passed. The distinct maximum-capacity Steam
 Cloud boundary is therefore certified, while count four remains intentionally
 unauthorized because it adds no state shape beyond the already certified 3+3
 boundary.
+
+## 33. Freeze and package the personal beta
+
+After maximum-capacity certification, development stopped expanding automation
+features and froze version 0.1.0 around the one proven product workflow. The
+personal-beta entry point discovers Steam Cloud profiles but fixes the action to
+five Scania Streamline Topline trucks from fleet card one, five first-available
+drivers, and the first completely empty large garage. It cannot request any
+other quantity or fall back to a local profile.
+
+Packaging preserves the architecture exercised during certification. A
+windowed `FleetFill.exe` owns setup, review, history, and process supervision;
+a separate console `FleetFillWorker.exe` dispatches the controller and its
+narrow probes. The one-folder bundle includes the exact private calibration
+frames, the pinned `@trucky/sii-decrypt-ts` module, and a local Node executable,
+so the installed app requires neither Python nor Node on the user's PATH.
+
+Frozen resources are resolved from PyInstaller's read-only bundle root. Mutable
+reports, screenshots, checkpoints, and recovery snapshots move to
+`%LOCALAPPDATA%\FleetFill`, avoiding writes under Program Files or beside a
+portable executable. Build-time gates prove the worker entry point and required
+resources. Additional package smoke tests successfully ran a two-transaction
+simulation, dynamically loaded an ETS2 recognizer, decoded a copied 9.6 MB
+encrypted save to a valid `SiiNunit` document, and rendered the real Windows Qt
+UI with the expected fonts and fixed 5+5 controls.
+
+The portable artifact is assembled with PyInstaller 6.21.0. An Inno Setup
+definition installs it per-user under Local AppData, creates a Start-menu entry
+and optional desktop shortcut, and supports normal Windows uninstall. Generated
+binaries remain ignored local artifacts because the calibrated visual evidence
+is intentionally not stored in the public repository.

@@ -7,6 +7,22 @@ not produced a public release yet.
 
 ### Added
 
+- A fixed-scope personal-beta desktop mode that exposes only the certified
+  Steam Cloud 5+5 path and locks the garage, truck card, driver policy, and
+  quantity to the proven configuration.
+- Frozen-runtime path separation: read-only resources stay in the application
+  bundle while run history, recovery snapshots, and evidence are written under
+  `%LOCALAPPDATA%\FleetFill`.
+- A dedicated packaged console worker so the existing guarded controller/probe
+  subprocess architecture remains isolated from the Qt GUI without requiring a
+  user-installed Python runtime.
+- A PyInstaller one-folder build containing the GUI, worker, calibrated local
+  recognition references, pinned save decoder, and local Node runtime.
+- A per-user Inno Setup definition with Start-menu integration, an optional
+  desktop shortcut, normal uninstall support, and no administrator requirement.
+- Packaged smoke gates for worker dispatch, simulation, required resources,
+  recognizer loading, Windows rendering, and copied encrypted-save decoding.
+
 - First PySide6 desktop application shell with ETS2-inspired charcoal and amber
   styling.
 - Final Setup, History, and Settings navigation structure.
