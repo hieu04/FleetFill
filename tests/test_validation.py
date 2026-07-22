@@ -86,6 +86,13 @@ class BatchValidationTests(unittest.TestCase):
             )
             self.assertTrue(evidence.passed)
 
+    def test_accepts_complete_three_plus_three_runtime_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = verify_batch_run(
+                self.make_run(Path(temp), count=3), expected_count=3
+            )
+            self.assertTrue(evidence.passed)
+
 
 if __name__ == "__main__":
     unittest.main()

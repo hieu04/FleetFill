@@ -36,6 +36,27 @@ class ApplicationArgumentsTests(unittest.TestCase):
         self.assertFalse(args.live_validation)
         self.assertFalse(args.live_test)
 
+    def test_main_profile_three_validation_has_a_separate_explicit_flag(self) -> None:
+        args = build_parser().parse_args(
+            ["--main-profile-three-validation", "Primary Career"]
+        )
+        self.assertEqual(args.main_profile_three_validation, "Primary Career")
+        self.assertIsNone(args.main_profile_validation)
+        self.assertIsNone(args.main_profile_two_validation)
+        self.assertFalse(args.live_validation)
+        self.assertFalse(args.live_test)
+
+    def test_main_profile_five_validation_has_a_separate_explicit_flag(self) -> None:
+        args = build_parser().parse_args(
+            ["--main-profile-five-validation", "Primary Career"]
+        )
+        self.assertEqual(args.main_profile_five_validation, "Primary Career")
+        self.assertIsNone(args.main_profile_validation)
+        self.assertIsNone(args.main_profile_two_validation)
+        self.assertIsNone(args.main_profile_three_validation)
+        self.assertFalse(args.live_validation)
+        self.assertFalse(args.live_test)
+
     def test_live_development_modes_are_mutually_exclusive(self) -> None:
         with self.assertRaises(SystemExit):
             build_parser().parse_args(["--live-test", "--live-validation"])
@@ -49,6 +70,24 @@ class ApplicationArgumentsTests(unittest.TestCase):
                     "--main-profile-validation",
                     "Primary Career",
                     "--main-profile-two-validation",
+                    "Primary Career",
+                ]
+            )
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(
+                [
+                    "--main-profile-two-validation",
+                    "Primary Career",
+                    "--main-profile-three-validation",
+                    "Primary Career",
+                ]
+            )
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(
+                [
+                    "--main-profile-three-validation",
+                    "Primary Career",
+                    "--main-profile-five-validation",
                     "Primary Career",
                 ]
             )

@@ -220,17 +220,65 @@ class FillRequestTests(unittest.TestCase):
             )
             self.assertTrue(any("exactly two" in error for error in errors))
 
-    def test_main_profile_validation_rejects_an_unapproved_slot_boundary(self) -> None:
+    def test_main_profile_three_validation_requires_exact_cloud_three_plus_three(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             profile = self.make_cloud_profile(Path(temp))
+            request = FillRequest(profile=profile.path, slots=3)
+
+            self.assertEqual(
+                validate_main_profile_validation_request(
+                    request,
+                    profile,
+                    enabled=True,
+                    expected_profile_name="Primary",
+                    expected_slots=3,
+                ),
+                [],
+            )
             errors = validate_main_profile_validation_request(
-                FillRequest(profile=profile.path, slots=3),
+                FillRequest(profile=profile.path, slots=2),
                 profile,
                 enabled=True,
                 expected_profile_name="Primary",
                 expected_slots=3,
             )
-        self.assertTrue(any("only the certified 1+1" in error for error in errors))
+            self.assertTrue(any("exactly three" in error for error in errors))
+
+    def test_main_profile_five_validation_requires_exact_cloud_five_plus_five(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            request = FillRequest(profile=profile.path, slots=5)
+
+            self.assertEqual(
+                validate_main_profile_validation_request(
+                    request,
+                    profile,
+                    enabled=True,
+                    expected_profile_name="Primary",
+                    expected_slots=5,
+                ),
+                [],
+            )
+            errors = validate_main_profile_validation_request(
+                FillRequest(profile=profile.path, slots=3),
+                profile,
+                enabled=True,
+                expected_profile_name="Primary",
+                expected_slots=5,
+            )
+            self.assertTrue(any("exactly five" in error for error in errors))
+
+    def test_main_profile_validation_rejects_an_unapproved_slot_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            errors = validate_main_profile_validation_request(
+                FillRequest(profile=profile.path, slots=4),
+                profile,
+                enabled=True,
+                expected_profile_name="Primary",
+                expected_slots=4,
+            )
+        self.assertTrue(any("guarded 5+5" in error for error in errors))
 
     def test_cloud_controller_arguments_carry_every_recovery_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -265,12 +313,41 @@ class FillRequestTests(unittest.TestCase):
         self.assertNotIn("--allow-steam-cloud-validation", arguments)
         self.assertEqual(arguments[arguments.index("--count") + 1], "2")
 
+    def test_cloud_three_controller_arguments_use_a_distinct_authorization(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            arguments = controller_arguments(
+                FillRequest(profile=profile.path, slots=3),
+                Path("project"),
+                steam_cloud_profile=profile,
+            )
+
+        self.assertIn("--allow-steam-cloud-three-validation", arguments)
+        self.assertNotIn("--allow-steam-cloud-validation", arguments)
+        self.assertNotIn("--allow-steam-cloud-two-validation", arguments)
+        self.assertEqual(arguments[arguments.index("--count") + 1], "3")
+
+    def test_cloud_five_controller_arguments_use_a_distinct_authorization(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            arguments = controller_arguments(
+                FillRequest(profile=profile.path, slots=5),
+                Path("project"),
+                steam_cloud_profile=profile,
+            )
+
+        self.assertIn("--allow-steam-cloud-five-validation", arguments)
+        self.assertNotIn("--allow-steam-cloud-validation", arguments)
+        self.assertNotIn("--allow-steam-cloud-two-validation", arguments)
+        self.assertNotIn("--allow-steam-cloud-three-validation", arguments)
+        self.assertEqual(arguments[arguments.index("--count") + 1], "5")
+
     def test_cloud_controller_arguments_reject_uncertified_counts(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             profile = self.make_cloud_profile(Path(temp))
-            with self.assertRaisesRegex(ValueError, r"only the 1\+1 and 2\+2"):
+            with self.assertRaisesRegex(ValueError, r"only the 1\+1, 2\+2, 3\+3, and 5\+5"):
                 controller_arguments(
-                    FillRequest(profile=profile.path, slots=3),
+                    FillRequest(profile=profile.path, slots=4),
                     Path("project"),
                     steam_cloud_profile=profile,
                 )

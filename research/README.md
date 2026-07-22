@@ -104,8 +104,9 @@ failed acknowledgement aborts the batch.
 ## Zero-input Steam Cloud preflight
 
 The main-profile preflight is deliberately separate from the live controller.
-It proves the exact active Steam Cloud career, creates a complete hash-verified
-recovery snapshot, and runs company inspection only against the copied autosave:
+It proves the exact active Steam Cloud career, requires a save written during the
+current ETS2 process, creates a complete hash-verified recovery snapshot, and
+runs company inspection only against that copied current-session save:
 
 ```powershell
 .\scripts\run-main-profile-preflight.ps1 -ProfileName "Your career name"
@@ -113,6 +114,10 @@ recovery snapshot, and runs company inspection only against the copied autosave:
 
 The local-only batch controller refuses authoritative Steam Cloud paths. This
 preflight does not import or invoke any UI probe and reports `input_sent: false`.
+If World of Trucks has refreshed live state since the last disk save, save the
+game once and return to the home screen before running preflight. FleetFill uses
+the newest valid slot written since ETS2 started and records it as the audit
+baseline; it does not assume that plain `autosave` is current.
 
 A verified snapshot can be reconstructed only into a new sandbox destination:
 
@@ -148,6 +153,38 @@ the certified 1+1 authorization. The controller accepts that flag only for a
 unified count-two fill. Runtime validation expects four guarded transactions,
 and the generalized post-exit verifier requires exactly two paired garage-slot
 changes. Its supervised live run and deep post-exit audit have both passed.
+
+The next guarded launcher is fixed to one 3+3 transaction:
+
+```powershell
+.\scripts\run-fleetfill-main-three-validation.ps1 -ProfileName "Your career name"
+```
+
+It uses `--allow-steam-cloud-three-validation`, mutually exclusive with the
+certified 1+1 and 2+2 authorizations. The controller accepts it only for a
+unified count-three fill. Runtime validation expects six guarded transactions,
+and the post-exit verifier requires exactly three paired garage-slot changes.
+Its first supervised run completed all six guarded transactions, but a pre-existing
+twelve-hour-old autosave made the delivery-preservation comparison inconclusive.
+The fresh-session save guard was added as a result. A synchronized repeat then
+passed all six actions and the complete deep audit, certifying the 3+3 boundary.
+
+The maximum-capacity launcher is separately fixed to one 5+5 transaction:
+
+```powershell
+.\scripts\run-fleetfill-main-five-validation.ps1 -ProfileName "Your career name"
+```
+
+It uses `--allow-steam-cloud-five-validation`, mutually exclusive with every
+smaller cloud authorization. The controller accepts it only for a unified
+count-five fill. Runtime validation expects ten guarded transactions, while the
+post-exit verifier requires all five paired indexes of one previously empty
+garage to change. Count four remains unauthorized. This boundary is offline-only
+until its supervised run and deep audit pass. Both have now passed on the
+synchronized main profile: Kaliningrad changed from completely empty to full,
+the exact EUR 1,249,925 was deducted, five trucks and five drivers were added,
+all 132 pre-existing truck configurations were preserved, and the active World
+of Trucks delivery fingerprint remained identical.
 
 The post-exit fill verifier also requires the active delivery state to match the
 preflight copy. Ordinary jobs are verified through their referenced job unit;

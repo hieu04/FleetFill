@@ -53,6 +53,16 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="CAREER_NAME",
         help="Arm exactly one guarded 2+2 batch on the named Steam Cloud career",
     )
+    live_group.add_argument(
+        "--main-profile-three-validation",
+        metavar="CAREER_NAME",
+        help="Arm exactly one guarded 3+3 batch on the named Steam Cloud career",
+    )
+    live_group.add_argument(
+        "--main-profile-five-validation",
+        metavar="CAREER_NAME",
+        help="Arm exactly one guarded 5+5 batch on the named Steam Cloud career",
+    )
     return parser
 
 
@@ -67,14 +77,25 @@ def main(argv: list[str] | None = None) -> int:
     app.setStyle("Fusion")
     app.setStyleSheet(APP_STYLESHEET)
     main_profile_name = (
-        args.main_profile_two_validation or args.main_profile_validation
+        args.main_profile_five_validation
+        or args.main_profile_three_validation
+        or args.main_profile_two_validation
+        or args.main_profile_validation
     )
     window = build_window(
         project_root(),
         live_validation_enabled=args.live_validation,
         graduated_live_enabled=args.live_test,
         main_profile_name=main_profile_name,
-        main_profile_slots=2 if args.main_profile_two_validation else 1,
+        main_profile_slots=(
+            5
+            if args.main_profile_five_validation
+            else 3
+            if args.main_profile_three_validation
+            else 2
+            if args.main_profile_two_validation
+            else 1
+        ),
     )
     page_index = {"setup": 0, "history": 1, "settings": 2}[args.page]
     window.stack.setCurrentIndex(page_index)

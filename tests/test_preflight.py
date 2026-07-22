@@ -6,7 +6,11 @@ import unittest
 from pathlib import Path
 
 from fleetfill.domain import STEAM_CLOUD_PROFILE_STORAGE, ProfileInfo
-from fleetfill.preflight import assess_active_profile, parse_latest_profile_evidence
+from fleetfill.preflight import (
+    assess_active_profile,
+    newest_session_save,
+    parse_latest_profile_evidence,
+)
 
 
 TEST_ID = "45545332204175746F6D6174696F6E2054657374"
@@ -186,6 +190,58 @@ class ActiveProfilePreflightTests(unittest.TestCase):
 
         self.assertFalse(result.passed)
         self.assertTrue(any("predates" in item for item in result.problems))
+
+    def test_cloud_profile_requires_a_save_from_the_current_session(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            documents = root / "Euro Truck Simulator 2"
+            documents.mkdir()
+            log_path = documents / "game.log.txt"
+            log_path.write_text(
+                selection("Primary Career", "PC_steam_cloud", "steam", MAIN_ID),
+                encoding="utf-8",
+            )
+            profile_path = root / "remote" / "profiles" / MAIN_ID
+            autosave = profile_path / "save" / "autosave"
+            autosave.mkdir(parents=True)
+            game = autosave / "game.sii"
+            game.write_text("stale", encoding="utf-8")
+            os.utime(game, (100, 100))
+
+            result = assess_active_profile(
+                ProfileInfo(
+                    "Primary Career",
+                    profile_path,
+                    storage=STEAM_CLOUD_PROFILE_STORAGE,
+                    documents_root=documents,
+                ),
+                log_path=log_path,
+                game_running=True,
+                process_started_at=200,
+            )
+
+        self.assertFalse(result.passed)
+        self.assertTrue(any("has not been saved" in item for item in result.problems))
+
+    def test_newest_session_save_selects_a_fresh_manual_slot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile_path = Path(temp) / "profiles" / MAIN_ID
+            autosave = profile_path / "save" / "autosave" / "game.sii"
+            manual = profile_path / "save" / "manual" / "game.sii"
+            autosave.parent.mkdir(parents=True)
+            manual.parent.mkdir(parents=True)
+            autosave.write_text("old", encoding="utf-8")
+            manual.write_text("fresh", encoding="utf-8")
+            os.utime(autosave, (100, 100))
+            os.utime(manual, (220, 220))
+
+            evidence = newest_session_save(
+                ProfileInfo("Primary Career", profile_path), 200
+            )
+
+        self.assertIsNotNone(evidence)
+        assert evidence is not None
+        self.assertEqual(evidence.slot, "manual")
 
 
 if __name__ == "__main__":
