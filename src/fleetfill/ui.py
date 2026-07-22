@@ -106,7 +106,9 @@ class SetupPage(QWidget):
             main_profile_name
             and main_profile_slots not in MAIN_PROFILE_VALIDATION_BOUNDARIES
         ):
-            raise ValueError("Main-profile validation supports only 1+1, 2+2, or 3+3")
+            raise ValueError(
+                "Main-profile validation supports only 1+1, 2+2, 3+3, or 5+5"
+            )
         self.project_root = project_root
         self.live_validation_enabled = live_validation_enabled
         self.graduated_live_enabled = graduated_live_enabled
@@ -702,7 +704,9 @@ class MainWindow(QMainWindow):
             main_profile_name
             and main_profile_slots not in MAIN_PROFILE_VALIDATION_BOUNDARIES
         ):
-            raise ValueError("Main-profile validation supports only 1+1, 2+2, or 3+3")
+            raise ValueError(
+                "Main-profile validation supports only 1+1, 2+2, 3+3, or 5+5"
+            )
         enabled_modes = sum(
             (bool(live_validation_enabled), bool(graduated_live_enabled), bool(main_profile_name))
         )

@@ -92,6 +92,11 @@ not produced a public release yet.
 - Successful synchronized 3+3 certification in Kiel with an exact EUR 749,955
   deduction, three matching trucks, three drivers, and an unchanged World of
   Trucks delivery fingerprint.
+- A separately locked and certified 5+5 maximum-capacity main-profile boundary;
+  count four remains intentionally unauthorized.
+- Successful synchronized main-profile 5+5 certification in Kaliningrad with an
+  exact EUR 1,249,925 deduction, five matching trucks, five drivers, all five
+  garage slots filled, and an unchanged World of Trucks delivery fingerprint.
 
 ### Safety
 

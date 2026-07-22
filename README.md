@@ -8,10 +8,10 @@ garage.
 The repository contains the proven automation engine, its research tools, and
 the first functional FleetFill desktop shell. Normal app launches cannot start
 live game input. Separate, visibly armed developer launchers cover the
-disposable test career, while a tightly restricted one-slot launcher has
-completed its first Steam Cloud main-profile validation. Steam Cloud support
-also includes proven identity, recovery-snapshot, sandbox-restore, and company
-preflights. The Windows installer has not been built.
+disposable test career and the certified exact 1+1, 2+2, 3+3, and 5+5 Steam
+Cloud main-profile boundaries. Steam Cloud support also includes proven
+identity, recovery-snapshot, sandbox-restore, and company preflights. The
+Windows installer has not been built.
 
 For the chronological build story, see
 [`docs/development-process.md`](docs/development-process.md).
@@ -87,8 +87,9 @@ memory hook.
    confirm the game persisted exactly the intended company changes.
 8. Steam Cloud careers use a distinct zero-input boundary that snapshots and
    hash-verifies every recovery surface before inspecting only the copied save.
-9. The separately armed main-profile launcher is fixed to one slot and must
-   repeat both the full snapshot and sandbox restore before its countdown.
+9. Separately armed exact-count main-profile launchers repeat both the full
+   snapshot and sandbox restore before their countdown; ordinary cloud-profile
+   execution remains locked.
 
 The controller composes many deliberately small probes rather than placing all
 mouse clicks in one long macro. This makes each transition independently
@@ -124,9 +125,9 @@ python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
 
 The same two suites run automatically on Windows for every pull request and
-every push to `main`. CI enforces 161 portable tests; seven calibrated visual
+every push to `main`. CI enforces 168 portable tests; seven calibrated visual
 tests report as skipped because their private ETS2 recording evidence remains
-in ignored local output. The full local run contains 168 tests. The required
+in ignored local output. The full local run contains 175 tests. The required
 status-check context is `Windows test suite`, produced by the `FleetFill tests`
 workflow.
 
@@ -195,11 +196,10 @@ and two drivers:
 .\scripts\run-fleetfill-main-two-validation.ps1 -ProfileName "Your career name"
 ```
 
-The certified 1+1 and 2+2 launchers use mutually exclusive controller
-authorization flags, and neither can request the other's count. The 2+2 path
+The certified exact-count launchers use mutually exclusive controller
+authorization flags, and none can request another boundary's count. The 2+2 path
 has passed its supervised four-action runtime and independent post-exit semantic
-save audit. Counts above two remain locked except for the separately armed 3+3
-boundary below.
+save audit. The separately armed 3+3 and 5+5 boundaries are documented below.
 
 The next graduated boundary is a separate launcher fixed to exactly three
 trucks and three drivers:
@@ -216,6 +216,19 @@ written during the current game process. The synchronized repeat then passed all
 six actions and every post-exit invariant, certifying the 3+3 boundary.
 Main-profile counts four and five remain input-locked.
 
+The certified maximum-capacity boundary is isolated in a separate launcher fixed to
+exactly five trucks and five drivers:
+
+```powershell
+.\scripts\run-fleetfill-main-five-validation.ps1 -ProfileName "Your career name"
+```
+
+It uses its own mutually exclusive authorization and cannot request one through
+four slots. Four remains unavailable because it adds no state boundary beyond
+certified 3+3; 5+5 uniquely proves that one empty large garage becomes completely
+full. Its zero-input preflight, supervised ten-action run, and independent
+post-exit audit have all passed on the synchronized main profile.
+
 The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
 disposable Automation Test profile, validates the selected autosave, calculates
@@ -231,8 +244,8 @@ The Qt process supervisor launches a no-input lifecycle simulator, streams
 its output and checkpoint file without freezing the UI, supports cooperative
 cancellation, and writes durable History records. The real controller uses the
 same cancellation marker between guarded probes. Normal desktop execution is
-still centrally locked; only the explicit 1+1, 2+2, and 3+3 validation launchers can
-cross their exact live boundaries.
+still centrally locked; only the explicit 1+1, 2+2, 3+3, and 5+5 validation
+launchers can cross their exact live boundaries.
 
 The save-inspector helper uses Node.js and a pinned dependency:
 
@@ -270,19 +283,20 @@ repository.
 
 Guarded one-to-five desktop batches have passed both runtime and independent
 post-exit save audits on the disposable local profile. The separately armed
-Steam Cloud main-profile 1+1 has also passed its first real runtime and
-post-exit semantic audit. It filled one previously empty Valmiera slot while
-preserving all 123 pre-existing trucks, unrelated garages, and the parked World
-of Trucks delivery. The verifier reconciles the batch cost with employee income
-and job fines when ETS2 advances company time during management screens. Normal
-main-profile input remains locked while larger graduated batches are evaluated.
-The separate 2+2 boundary is now certified as well: it filled two Aarhus slots
+Steam Cloud main-profile boundaries at 1+1, 2+2, 3+3, and 5+5 have passed real
+runtime and post-exit semantic audits. The original 1+1 filled one Valmiera slot
+while preserving all 123 pre-existing trucks, unrelated garages, and the parked
+World of Trucks delivery. The separate 2+2 boundary filled two Aarhus slots
 with matching trucks and drivers while preserving the active World of Trucks
 delivery and all unrelated company state. The isolated 3+3 boundary is now
 certified as well: its synchronized repeat filled three Kiel slots, reconciled
 the exact EUR 749,955 cost, and preserved the complete World of Trucks delivery
-fingerprint plus all 129 pre-existing trucks. Normal four-to-five main-profile
-input remains locked.
+fingerprint plus all 129 pre-existing trucks. The certified 5+5 maximum boundary
+filled all five Kaliningrad slots, reconciled EUR 1,249,925 exactly, preserved all
+132 pre-existing truck configurations, and kept the World of Trucks delivery
+fingerprint byte-for-byte equivalent. Normal main-profile input remains locked;
+only those explicitly armed exact boundaries can send input, and count four is
+intentionally unavailable.
 Packaging follows later.
 
 FleetFill is an unofficial community project and is not affiliated with SCS

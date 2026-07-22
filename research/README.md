@@ -169,6 +169,23 @@ twelve-hour-old autosave made the delivery-preservation comparison inconclusive.
 The fresh-session save guard was added as a result. A synchronized repeat then
 passed all six actions and the complete deep audit, certifying the 3+3 boundary.
 
+The maximum-capacity launcher is separately fixed to one 5+5 transaction:
+
+```powershell
+.\scripts\run-fleetfill-main-five-validation.ps1 -ProfileName "Your career name"
+```
+
+It uses `--allow-steam-cloud-five-validation`, mutually exclusive with every
+smaller cloud authorization. The controller accepts it only for a unified
+count-five fill. Runtime validation expects ten guarded transactions, while the
+post-exit verifier requires all five paired indexes of one previously empty
+garage to change. Count four remains unauthorized. This boundary is offline-only
+until its supervised run and deep audit pass. Both have now passed on the
+synchronized main profile: Kaliningrad changed from completely empty to full,
+the exact EUR 1,249,925 was deducted, five trucks and five drivers were added,
+all 132 pre-existing truck configurations were preserved, and the active World
+of Trucks delivery fingerprint remained identical.
+
 The post-exit fill verifier also requires the active delivery state to match the
 preflight copy. Ordinary jobs are verified through their referenced job unit;
 World of Trucks contracts are identified by `stored_online_job_id`. Assigned

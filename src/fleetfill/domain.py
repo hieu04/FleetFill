@@ -18,7 +18,7 @@ SUPPORTED_LANGUAGE = "English"
 VALIDATION_PROFILE_NAME = "ETS2 Automation Test"
 LOCAL_PROFILE_STORAGE = "local"
 STEAM_CLOUD_PROFILE_STORAGE = "steam_cloud"
-MAIN_PROFILE_VALIDATION_BOUNDARIES = (1, 2, 3)
+MAIN_PROFILE_VALIDATION_BOUNDARIES = (1, 2, 3, 5)
 
 
 @dataclass(frozen=True)
@@ -310,11 +310,11 @@ def validate_main_profile_validation_request(
         errors.append("The main-profile validation launcher is not armed.")
     if expected_slots not in MAIN_PROFILE_VALIDATION_BOUNDARIES:
         errors.append(
-            "Main-profile validation supports only the certified 1+1 and 2+2 "
-            "boundaries plus the guarded 3+3 boundary."
+            "Main-profile validation supports only the certified 1+1, 2+2, "
+            "and 3+3 boundaries plus the guarded 5+5 boundary."
         )
     elif request.slots != expected_slots:
-        quantity = {1: "one", 2: "two", 3: "three"}[expected_slots]
+        quantity = {1: "one", 2: "two", 3: "three", 5: "five"}[expected_slots]
         errors.append(
             f"Main-profile validation is limited to exactly {quantity} "
             f"truck{'s' if expected_slots != 1 else ''} and {quantity} "
@@ -394,9 +394,12 @@ def controller_arguments(
             cloud_validation_flag = "--allow-steam-cloud-two-validation"
         elif request.slots == 3:
             cloud_validation_flag = "--allow-steam-cloud-three-validation"
+        elif request.slots == 5:
+            cloud_validation_flag = "--allow-steam-cloud-five-validation"
         else:
             raise ValueError(
-                "Steam Cloud controller arguments support only the 1+1, 2+2, and 3+3 validation boundaries"
+                "Steam Cloud controller arguments support only the 1+1, 2+2, "
+                "3+3, and 5+5 validation boundaries"
             )
         arguments.extend(
             [

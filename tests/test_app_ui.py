@@ -138,8 +138,33 @@ class MainWindowTests(unittest.TestCase):
         finally:
             window.close()
 
+    def test_main_profile_five_mode_is_named_visible_and_forces_five_slots(self) -> None:
+        profile = ProfileInfo(
+            "Primary Career",
+            Path("cloud-profile"),
+            storage=STEAM_CLOUD_PROFILE_STORAGE,
+            documents_root=Path("documents"),
+            companion_path=Path("companion"),
+            steam_metadata_path=Path("remotecache.vdf"),
+        )
+        with patch("fleetfill.ui.discover_steam_cloud_profiles", return_value=[profile]):
+            window = MainWindow(
+                Path.cwd(),
+                main_profile_name="Primary Career",
+                main_profile_slots=5,
+            )
+        try:
+            page = window.setup_page
+            self.assertEqual(page.slots_combo.currentData(), 5)
+            self.assertFalse(page.slots_combo.isEnabled())
+            self.assertIn("5+5", page.integration_note.text())
+            self.assertEqual(page.total_value.text(), money(1_249_925))
+            self.assertEqual(page.current_profile_info(), profile)
+        finally:
+            window.close()
+
     def test_main_profile_mode_rejects_an_unapproved_slot_boundary(self) -> None:
-        with self.assertRaisesRegex(ValueError, r"only 1\+1, 2\+2, or 3\+3"):
+        with self.assertRaisesRegex(ValueError, r"only 1\+1, 2\+2, 3\+3, or 5\+5"):
             MainWindow(
                 Path.cwd(),
                 main_profile_name="Primary Career",

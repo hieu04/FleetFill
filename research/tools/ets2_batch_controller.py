@@ -769,6 +769,10 @@ def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
         "--allow-steam-cloud-three-validation",
         action="store_true",
     )
+    cloud_validation.add_argument(
+        "--allow-steam-cloud-five-validation",
+        action="store_true",
+    )
     parser.add_argument("--profile-name")
     parser.add_argument("--documents-companion", type=Path)
     parser.add_argument("--steam-metadata", type=Path)
@@ -893,6 +897,9 @@ def run_live(args: argparse.Namespace) -> int:
     cloud_three_allowed = bool(
         getattr(args, "allow_steam_cloud_three_validation", False)
     )
+    cloud_five_allowed = bool(
+        getattr(args, "allow_steam_cloud_five_validation", False)
+    )
     cloud_expected_count = (
         1
         if cloud_one_allowed
@@ -900,6 +907,8 @@ def run_live(args: argparse.Namespace) -> int:
         if cloud_two_allowed
         else 3
         if cloud_three_allowed
+        else 5
+        if cloud_five_allowed
         else None
     )
     cloud_allowed = cloud_expected_count is not None

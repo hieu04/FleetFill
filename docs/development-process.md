@@ -691,3 +691,47 @@ of Trucks job ID and identical complete delivery fingerprints. Runtime validatio
 and every semantic save invariant passed, so the exact 3+3 Steam Cloud boundary
 is certified. Counts four and five remain input-locked pending the next isolated
 maximum-capacity boundary.
+
+## 31. Isolate the maximum main-profile 5+5 boundary
+
+The next graduated step deliberately skips 4+4. Certified 3+3 has already proven
+multiple repeated purchases and hires while leaving unused slots intact; 4+4
+would repeat that same state shape. A 5+5 run reaches a distinct boundary: it
+consumes all five free truck slots, pairs all five drivers, and leaves the target
+garage completely full.
+
+FleetFill therefore adds one separate desktop flag, launcher, and controller
+authorization fixed to count five. It remains mutually exclusive with 1+1, 2+2,
+and 3+3, while count four stays rejected in the domain, desktop, and controller.
+The UI locks the quantity at five and shows the exact EUR 1,249,925 estimate.
+
+The established fresh-session save, full Steam Cloud recovery snapshot, sandbox
+restore rehearsal, balance proof, and empty-garage requirement all remain in
+force. Runtime evidence must contain ten successful actions. The semantic audit
+must find five unique matching trucks and five unique hired drivers across all
+five paired indexes of one previously empty garage, with no unrelated changes.
+The boundary remains offline-only until those live and post-exit checks pass.
+
+The isolated maximum boundary has 80 desktop/domain tests and 95
+controller/save-audit tests, for 175 passing local tests. Seven calibrated visual
+tests remain declared skips on hosted runners, so CI enforces 168 portable tests.
+
+## 32. Certify the maximum main-profile 5+5 boundary
+
+The maximum-capacity run completed all ten guarded transactions and filled every
+paired slot of the previously empty Kaliningrad garage. Company truck and driver
+counts each rose by five, from 132 to 137 trucks and from 130 to 135 drivers, and
+the online truck-purchase counter rose from 139 to 144.
+
+The exact EUR 1,249,925 batch cost reconciled with no intervening employee income
+or newly booked fines. All five new Scania Streamline Topline trucks have unique
+vehicle IDs, the same 37-accessory configuration, full fuel, and zero odometer.
+All five new drivers have unique IDs and are based in Kaliningrad. Every unrelated
+garage slot and all 132 pre-existing truck configurations remained unchanged.
+
+The fresh manual-save baseline and clean-exit autosave retain World of Trucks job
+ID `147641210` with an identical complete delivery fingerprint. Runtime evidence
+and every semantic save invariant passed. The distinct maximum-capacity Steam
+Cloud boundary is therefore certified, while count four remains intentionally
+unauthorized because it adds no state shape beyond the already certified 3+3
+boundary.
