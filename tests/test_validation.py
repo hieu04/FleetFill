@@ -79,6 +79,13 @@ class BatchValidationTests(unittest.TestCase):
             )
             self.assertTrue(evidence.passed)
 
+    def test_accepts_complete_two_plus_two_runtime_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = verify_batch_run(
+                self.make_run(Path(temp), count=2), expected_count=2
+            )
+            self.assertTrue(evidence.passed)
+
 
 if __name__ == "__main__":
     unittest.main()

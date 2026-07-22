@@ -77,7 +77,9 @@ memory hook.
 4. The batch controller advances only after the probe writes verifiable JSON
    evidence. Unexpected screens, slot states, prompts, or marker identities
    abort the run.
-5. Garage and dealer markers are detected visually. When a useful marker is not
+5. Garage and dealer markers are detected visually. If several fully visible
+   dealer markers are available, FleetFill chooses the topmost marker, then the
+   leftmost one as a deterministic tie-breaker. When a useful marker is not
    visible, the controller can pan the map and replay the measured locator.
 6. Before a live batch, the controller copies the disposable profile's autosave
    and `profile.sii` into the local run evidence directory.
@@ -122,9 +124,9 @@ python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
 
 The same two suites run automatically on Windows for every pull request and
-every push to `main`. CI enforces 126 portable tests; seven calibrated visual
+every push to `main`. CI enforces 149 portable tests; seven calibrated visual
 tests report as skipped because their private ETS2 recording evidence remains
-in ignored local output. The full local run remains 133 tests. The required
+in ignored local output. The full local run contains 156 tests. The required
 status-check context is `Windows test suite`, produced by the `FleetFill tests`
 workflow.
 
@@ -171,18 +173,29 @@ metadata, verifies every copied file by SHA-256, and inspects only that copy:
 
 This command does not move the mouse or unlock the batch controller.
 
-The next developer-only launcher is restricted to exactly one truck and one
-driver on an explicitly named Steam Cloud career:
+The certified developer-only launcher is restricted to exactly one truck and
+one driver on an explicitly named Steam Cloud career:
 
 ```powershell
 .\scripts\run-fleetfill-main-validation.ps1 -ProfileName "Your career name"
 ```
 
-This path remains an unproven supervised boundary. Before its countdown, the
-controller must create a fresh full snapshot, verify its embedded content
-manifest, reconstruct it in a sandbox, inspect the copied company state, and
-prove sufficient balance plus an empty large garage. Normal FleetFill launches
-still cannot use it.
+That 1+1 path has passed its real runtime and post-exit semantic audit. Before
+every countdown, the controller still creates a fresh full snapshot, verifies
+its embedded content manifest, reconstructs it in a sandbox, inspects the
+copied company state, and proves sufficient balance plus an empty large garage.
+
+The certified 2+2 boundary is a separate launcher fixed to exactly two trucks
+and two drivers:
+
+```powershell
+.\scripts\run-fleetfill-main-two-validation.ps1 -ProfileName "Your career name"
+```
+
+The 1+1 and 2+2 launchers use mutually exclusive controller authorization
+flags. Neither can request the other's count, and Steam Cloud counts above two
+remain input-locked. The 2+2 path has passed its supervised four-action runtime
+and independent post-exit semantic save audit.
 
 The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
 and Settings navigation. Setup discovers local ETS2 profiles, prefers the
@@ -199,8 +212,8 @@ The Qt process supervisor launches a no-input lifecycle simulator, streams
 its output and checkpoint file without freezing the UI, supports cooperative
 cancellation, and writes durable History records. The real controller uses the
 same cancellation marker between guarded probes. Normal desktop execution is
-still centrally locked; only the explicit 1+1 validation launcher can cross the
-live boundary.
+still centrally locked; only the explicit 1+1 and 2+2 validation launchers can
+cross their exact live boundaries.
 
 The save-inspector helper uses Node.js and a pinned dependency:
 
@@ -238,12 +251,16 @@ repository.
 
 Guarded one-to-five desktop batches have passed both runtime and independent
 post-exit save audits on the disposable local profile. The separately armed
-Steam Cloud main-profile 1+1 has now also passed its first real runtime and
+Steam Cloud main-profile 1+1 has also passed its first real runtime and
 post-exit semantic audit. It filled one previously empty Valmiera slot while
 preserving all 123 pre-existing trucks, unrelated garages, and the parked World
 of Trucks delivery. The verifier reconciles the batch cost with employee income
 and job fines when ETS2 advances company time during management screens. Normal
 main-profile input remains locked while larger graduated batches are evaluated.
+The separate 2+2 boundary is now certified as well: it filled two Aarhus slots
+with matching trucks and drivers while preserving the active World of Trucks
+delivery and all unrelated company state. Normal three-to-five main-profile
+input remains locked.
 Packaging follows later.
 
 FleetFill is an unofficial community project and is not affiliated with SCS

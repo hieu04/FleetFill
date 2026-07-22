@@ -300,14 +300,22 @@ def validate_main_profile_validation_request(
     *,
     enabled: bool,
     expected_profile_name: str | None,
+    expected_slots: int = 1,
 ) -> list[str]:
-    """Gate the separately armed, exactly-one-slot Steam Cloud validation."""
+    """Gate one explicitly armed Steam Cloud validation boundary."""
 
     errors = validate_request(request)
     if not enabled or not expected_profile_name:
         errors.append("The main-profile validation launcher is not armed.")
-    if request.slots != 1:
-        errors.append("Main-profile validation is limited to exactly one truck and one driver.")
+    if expected_slots not in (1, 2):
+        errors.append("Main-profile validation supports only the certified 1+1 and guarded 2+2 boundaries.")
+    elif request.slots != expected_slots:
+        quantity = "one" if expected_slots == 1 else "two"
+        errors.append(
+            f"Main-profile validation is limited to exactly {quantity} "
+            f"truck{'s' if expected_slots != 1 else ''} and {quantity} "
+            f"driver{'s' if expected_slots != 1 else ''}."
+        )
     if not profile.is_steam_cloud:
         errors.append("Main-profile validation requires an authoritative Steam Cloud profile.")
     if expected_profile_name and profile.name != expected_profile_name:
@@ -376,9 +384,17 @@ def controller_arguments(
             raise ValueError("The Steam Cloud Documents companion is required")
         if steam_cloud_profile.steam_metadata_path is None:
             raise ValueError("Steam remotecache.vdf is required")
+        if request.slots == 1:
+            cloud_validation_flag = "--allow-steam-cloud-validation"
+        elif request.slots == 2:
+            cloud_validation_flag = "--allow-steam-cloud-two-validation"
+        else:
+            raise ValueError(
+                "Steam Cloud controller arguments support only the 1+1 and 2+2 validation boundaries"
+            )
         arguments.extend(
             [
-                "--allow-steam-cloud-validation",
+                cloud_validation_flag,
                 "--profile-name",
                 steam_cloud_profile.name,
                 "--documents-companion",

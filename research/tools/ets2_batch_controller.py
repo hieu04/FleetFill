@@ -745,7 +745,12 @@ def add_common_live_arguments(parser: argparse.ArgumentParser) -> None:
         type=Path,
         help="Path to the disposable local ETS2 profile used for the safety backup",
     )
-    parser.add_argument("--allow-steam-cloud-validation", action="store_true")
+    cloud_validation = parser.add_mutually_exclusive_group()
+    cloud_validation.add_argument("--allow-steam-cloud-validation", action="store_true")
+    cloud_validation.add_argument(
+        "--allow-steam-cloud-two-validation",
+        action="store_true",
+    )
     parser.add_argument("--profile-name")
     parser.add_argument("--documents-companion", type=Path)
     parser.add_argument("--steam-metadata", type=Path)
@@ -863,7 +868,12 @@ def run_live(args: argparse.Namespace) -> int:
         print("BATCH_REFUSED: live phases require an explicit --profile path")
         return 2
     cloud_profile = is_steam_cloud_profile_path(args.profile)
-    cloud_allowed = bool(getattr(args, "allow_steam_cloud_validation", False))
+    cloud_one_allowed = bool(getattr(args, "allow_steam_cloud_validation", False))
+    cloud_two_allowed = bool(
+        getattr(args, "allow_steam_cloud_two_validation", False)
+    )
+    cloud_expected_count = 1 if cloud_one_allowed else 2 if cloud_two_allowed else None
+    cloud_allowed = cloud_expected_count is not None
     if cloud_profile and not cloud_allowed:
         print(
             "BATCH_REFUSED: Steam Cloud profiles require the separate "
@@ -874,8 +884,11 @@ def run_live(args: argparse.Namespace) -> int:
         print("BATCH_REFUSED: the Steam Cloud validation flag requires a cloud profile")
         return 2
     if cloud_profile:
-        if args.phase != "fill" or args.count != 1:
-            print("BATCH_REFUSED: Steam Cloud validation is limited to one 1+1 fill")
+        if args.phase != "fill" or args.count != cloud_expected_count:
+            print(
+                "BATCH_REFUSED: Steam Cloud validation is limited to one "
+                f"{cloud_expected_count}+{cloud_expected_count} fill"
+            )
             return 2
         missing_cloud_args = [
             name

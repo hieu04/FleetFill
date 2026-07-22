@@ -43,6 +43,17 @@ def button_metrics(image: Image.Image) -> dict:
     }
 
 
+def choose_available_marker(markers: list[dict]) -> dict | None:
+    """Choose a visible dealer deterministically from a position-dependent map."""
+    available = [marker for marker in markers if marker["state"] == "available"]
+    if not available:
+        return None
+    return min(
+        available,
+        key=lambda marker: (marker["center"][1], marker["center"][0]),
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--delay", type=float, default=10.0)
@@ -80,15 +91,16 @@ def main() -> int:
     available = [marker for marker in before_markers if marker["state"] == "available"]
     selected = [marker for marker in before_markers if marker["state"] == "selected"]
     before_button = button_metrics(before_image)
-    if len(available) != 1 or selected or before_button["enabled"]:
+    target_marker = choose_available_marker(before_markers)
+    if target_marker is None or selected or before_button["enabled"]:
         print(
-            "MARKER_ABORTED: expected exactly one available dealer, no selected "
+            "MARKER_ABORTED: expected at least one available dealer, no selected "
             f"dealer, and disabled Buy online; available={len(available)}, "
             f"selected={len(selected)}, button={before_button}"
         )
         return 3
 
-    target = tuple(available[0]["center"])
+    target = tuple(target_marker["center"])
     set_pointer(target)
     click_left_once()
     set_pointer(SAFE_POINTER)
@@ -118,6 +130,8 @@ def main() -> int:
         "gameplay_transactions": 0,
         "dealer_marker_clicks": 1,
         "buy_online_clicks": 0,
+        "available_marker_count": len(available),
+        "selection_policy": "topmost-then-leftmost",
         "marker_target": list(target),
         "buy_online_button": {
             "before": before_button,

@@ -92,6 +92,39 @@ class FinalizeValidationTests(unittest.TestCase):
 
             self.assertEqual(load_run_paths(run_dir), (profile, before, 1))
 
+    def test_resolves_two_slot_cloud_snapshot_autosave(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            run_dir = root / "run"
+            profile = root / "remote" / "profiles" / "MAIN"
+            before = (
+                run_dir
+                / "snapshot"
+                / "steam-cloud-profile"
+                / "save"
+                / "autosave"
+                / "game.sii"
+            )
+            profile.mkdir(parents=True)
+            before.parent.mkdir(parents=True)
+            before.write_text("save", encoding="utf-8")
+            (run_dir / "preflight.json").write_text(
+                json.dumps(
+                    {
+                        "phase": "fill",
+                        "count": 2,
+                        "backup": {
+                            "profile": str(profile),
+                            "backup": str(before.parents[2]),
+                            "autosave": str(before.parent),
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            self.assertEqual(load_run_paths(run_dir), (profile, before, 2))
+
     def test_records_passed_audit_in_runtime_and_history_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             run_dir = Path(temp)

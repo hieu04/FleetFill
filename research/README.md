@@ -126,8 +126,8 @@ The rehearsal checks the embedded per-file content manifest when present,
 copies all three recovery surfaces, and independently hashes the reconstruction.
 It contains no live-path overwrite operation.
 
-The developer-only main-profile launcher is fixed to one 1+1 transaction and
-requires an explicit career name:
+The certified developer-only main-profile launcher is fixed to one 1+1
+transaction and requires an explicit career name:
 
 ```powershell
 .\scripts\run-fleetfill-main-validation.ps1 -ProfileName "Your career name"
@@ -137,13 +137,28 @@ The controller repeats the full snapshot and restore rehearsal before company
 inspection and countdown. `--preflight-only` exercises this exact path and exits
 before any UI probe.
 
+The certified 2+2 launcher is separately fixed to one 2+2 transaction:
+
+```powershell
+.\scripts\run-fleetfill-main-two-validation.ps1 -ProfileName "Your career name"
+```
+
+It uses `--allow-steam-cloud-two-validation`, which is mutually exclusive with
+the certified 1+1 authorization. The controller accepts that flag only for a
+unified count-two fill. Runtime validation expects four guarded transactions,
+and the generalized post-exit verifier requires exactly two paired garage-slot
+changes. Its supervised live run and deep post-exit audit have both passed.
+
 The post-exit fill verifier also requires the active delivery state to match the
 preflight copy. Ordinary jobs are verified through their referenced job unit;
 World of Trucks contracts are identified by `stored_online_job_id`. Assigned
 truck/trailer objects, attachment state, and parked placements are included in
 the fingerprint. The verifier also accepts ETS2's observed save-time transition
 from an online-only contract to a materialized `player_job`, provided the online
-job remains active and every parked vehicle field is unchanged.
+job remains active and every parked vehicle field is unchanged. When an existing
+online job is saved after live driving, only known distance, fuel, fines, and
+destination-parking fields may refresh; its job ID, cargo, route, loaded state,
+and player vehicle state must remain stable.
 
 Company balances are reconciled rather than assumed to be otherwise frozen.
 FleetFill verifies the batch cost and online-purchase counter, then accounts for

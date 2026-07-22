@@ -7,6 +7,7 @@ import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import patch
 
 
 TOOLS = Path(__file__).resolve().parents[1] / "tools"
@@ -83,6 +84,102 @@ class CooperativeCancellationTests(unittest.TestCase):
         self.assertEqual(result, 2)
         self.assertIn("limited to one 1+1", output.getvalue())
         self.assertFalse(run_dir.exists())
+
+    def test_cloud_two_validation_flag_rejects_every_other_count(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "227300" / "remote" / "profiles" / "MAIN"
+            (profile / "save" / "autosave").mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            companion = root / "documents" / "steam_profiles" / "MAIN"
+            companion.mkdir(parents=True)
+            metadata = root / "227300" / "remotecache.vdf"
+            metadata.write_text("metadata", encoding="utf-8")
+            run_dir = root / "run"
+            args = build_parser().parse_args(
+                [
+                    "fill", "--execute", "--profile", str(profile),
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "1", "--start-stage", "home", "--dynamic-garage",
+                    "--output-dir", str(run_dir),
+                    "--allow-steam-cloud-two-validation",
+                    "--profile-name", "Primary",
+                    "--documents-companion", str(companion),
+                    "--steam-metadata", str(metadata),
+                ]
+            )
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = run_live(args)
+
+        self.assertEqual(result, 2)
+        self.assertIn("limited to one 2+2", output.getvalue())
+        self.assertFalse(run_dir.exists())
+
+    def test_cloud_two_preflight_completes_without_spawning_a_probe(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            profile = root / "227300" / "remote" / "profiles" / "MAIN"
+            (profile / "save" / "autosave").mkdir(parents=True)
+            (profile / "profile.sii").write_text("profile", encoding="utf-8")
+            companion = root / "documents" / "steam_profiles" / "MAIN"
+            companion.mkdir(parents=True)
+            metadata = root / "227300" / "remotecache.vdf"
+            metadata.write_text("metadata", encoding="utf-8")
+            run_dir = root / "run"
+            args = build_parser().parse_args(
+                [
+                    "fill", "--execute", "--preflight-only",
+                    "--profile", str(profile),
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "2", "--start-stage", "home", "--dynamic-garage",
+                    "--require-empty-garage", "--output-dir", str(run_dir),
+                    "--allow-steam-cloud-two-validation",
+                    "--profile-name", "Primary",
+                    "--documents-companion", str(companion),
+                    "--steam-metadata", str(metadata),
+                ]
+            )
+            backup = {
+                "backup": str(root / "backup"),
+                "profile": str(profile),
+                "autosave": str(profile / "save" / "autosave"),
+            }
+            company = {
+                "money_eur": 1_000_000,
+                "planned_cost_eur": 2 * (TRUCK_PRICE_EUR + DRIVER_HIRE_COST_EUR),
+                "empty_large_garages": ["garage.test"],
+            }
+            output = io.StringIO()
+            with (
+                patch(
+                    "ets2_batch_controller.create_steam_cloud_preflight_backup",
+                    return_value=backup,
+                ),
+                patch(
+                    "ets2_batch_controller.inspect_preflight_company",
+                    return_value=company,
+                ),
+                patch.object(ProbeRunner, "run", side_effect=AssertionError("input probe spawned"), create=True),
+                redirect_stdout(output),
+            ):
+                result = run_live(args)
+            preflight = (run_dir / "preflight.json").read_text(encoding="utf-8")
+
+        self.assertEqual(result, 0)
+        self.assertIn("no input sent", output.getvalue())
+        self.assertIn('"count": 2', preflight)
+
+    def test_cloud_validation_authorizations_are_mutually_exclusive(self) -> None:
+        with self.assertRaises(SystemExit):
+            build_parser().parse_args(
+                [
+                    "fill", "--execute", "--profile", "profile",
+                    "--occupied", "0", "--truck-present", "0", "--free", "5",
+                    "--count", "2", "--allow-steam-cloud-validation",
+                    "--allow-steam-cloud-two-validation",
+                ]
+            )
 
     def test_cloud_preflight_backup_rehearses_full_recovery_set(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

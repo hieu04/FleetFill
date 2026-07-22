@@ -196,6 +196,42 @@ class FillRequestTests(unittest.TestCase):
             self.assertTrue(any("exactly one" in error for error in errors))
             self.assertTrue(any("Wrong Career" in error for error in errors))
 
+    def test_main_profile_two_validation_requires_exact_cloud_two_plus_two(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            request = FillRequest(profile=profile.path, slots=2)
+
+            self.assertEqual(
+                validate_main_profile_validation_request(
+                    request,
+                    profile,
+                    enabled=True,
+                    expected_profile_name="Primary",
+                    expected_slots=2,
+                ),
+                [],
+            )
+            errors = validate_main_profile_validation_request(
+                FillRequest(profile=profile.path, slots=1),
+                profile,
+                enabled=True,
+                expected_profile_name="Primary",
+                expected_slots=2,
+            )
+            self.assertTrue(any("exactly two" in error for error in errors))
+
+    def test_main_profile_validation_rejects_an_unapproved_slot_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            errors = validate_main_profile_validation_request(
+                FillRequest(profile=profile.path, slots=3),
+                profile,
+                enabled=True,
+                expected_profile_name="Primary",
+                expected_slots=3,
+            )
+        self.assertTrue(any("only the certified 1+1" in error for error in errors))
+
     def test_cloud_controller_arguments_carry_every_recovery_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             profile = self.make_cloud_profile(Path(temp))
@@ -215,6 +251,29 @@ class FillRequestTests(unittest.TestCase):
             arguments[arguments.index("--steam-metadata") + 1],
             str(profile.steam_metadata_path),
         )
+
+    def test_cloud_two_controller_arguments_use_a_distinct_authorization(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            arguments = controller_arguments(
+                FillRequest(profile=profile.path, slots=2),
+                Path("project"),
+                steam_cloud_profile=profile,
+            )
+
+        self.assertIn("--allow-steam-cloud-two-validation", arguments)
+        self.assertNotIn("--allow-steam-cloud-validation", arguments)
+        self.assertEqual(arguments[arguments.index("--count") + 1], "2")
+
+    def test_cloud_controller_arguments_reject_uncertified_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            with self.assertRaisesRegex(ValueError, r"only the 1\+1 and 2\+2"):
+                controller_arguments(
+                    FillRequest(profile=profile.path, slots=3),
+                    Path("project"),
+                    steam_cloud_profile=profile,
+                )
 
     def test_supervised_live_arguments_share_output_and_cancel_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
