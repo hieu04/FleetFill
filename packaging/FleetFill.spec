@@ -15,8 +15,14 @@ reference_files = (
     "research/output/video-020357/frames/frame-0019-000009.500s.jpg",
     "research/output/video-020129/frames/frame-0027-000013.500s.jpg",
     "research/output/video-020129/frames/frame-0042-000021.000s.jpg",
+    "research/output/video-020129/frames/frame-0043-000021.500s.jpg",
+    "research/output/video-020129/frames/frame-0045-000022.500s.jpg",
+    "research/output/video-020129/frames/frame-0052-000026.000s.jpg",
     "research/output/video-020129/frames/frame-0058-000029.000s.jpg",
     "research/output/video-020129/frames/frame-0062-000031.000s.jpg",
+    "research/output/live-wake-home-test/direct-capture-20260721-005704-141212.png",
+    "research/output/live-hover-services-test/direct-capture-20260721-005945-220477.png",
+    "research/output/live-open-recruitment-from-home-test/direct-capture-20260721-010250-822667.png",
 )
 
 required_paths = [ROOT / relative for relative in reference_files]

@@ -65,7 +65,7 @@ until those combinations have their own recognition evidence and tests.
 
 ## Personal beta scope
 
-Version 0.1.1 deliberately freezes the first installable beta to the exact
+Version 0.1.2 deliberately freezes the first installable beta to the exact
 environment and path that passed the maximum-capacity certification:
 
 - ETS2 1.60, English, 1920x1080 exclusive fullscreen, 100% Windows scaling

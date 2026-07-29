@@ -7,6 +7,11 @@ not produced a public release yet.
 
 ### Fixed
 
+- Packaged all home-menu, Services-flyout, recruitment-map, and fleet-card
+  calibration images used by the live workflow, fixing the installed worker's
+  immediate Step 1 resource failure.
+- Added a no-input frozen-runtime calibration check that opens and fully decodes
+  every required reference image before an installer build can pass.
 - Included the dynamically loaded Pillow drawing and font modules in the frozen
   worker, fixing an immediate Step 1 failure in the installed personal beta.
 - Added exhaustive packaged-probe import gates so the installer build fails

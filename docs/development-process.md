@@ -783,3 +783,20 @@ missing dynamic imports in the actual frozen runtime, rather than assuming a
 successful source-tree test or worker dispatch proves that every guarded child
 tool can load. The corrected bundle passes the exact Step 1 probe that failed in
 the installed build.
+
+## 35. Prove packaged calibration resources, not only imports
+
+The first installed 0.1.1 live attempt again stopped at Step 1 with zero of ten
+actions. Its full recovery snapshot and restore rehearsal passed, and no Step 1
+output directory was created. The corrected worker could import the probe, but
+the probe then failed while loading its home-screen reference: the initial
+package manifest contained recording frames used by the general recognizers but
+omitted three live navigation references. It also omitted three fleet-mode
+frames that later purchase steps would have reached.
+
+Version 0.1.2 explicitly packages all fourteen calibration images required by
+the frozen 5+5 path. A dedicated no-input packaged entry point now resolves each
+image from the same runtime root used by the probes, opens it with Pillow, and
+fully decodes its pixels. The build cannot produce an installer unless this
+check passes inside `FleetFillWorker`, covering file presence, destination path,
+image integrity, and frozen Pillow decoding together.

@@ -70,11 +70,20 @@ foreach ($probeScript in $probeScripts) {
     }
 }
 
+$calibrationCheck = Join-Path $packagedTools "check_packaged_calibration.py"
+& $worker $calibrationCheck
+if ($LASTEXITCODE -ne 0) {
+    throw "Packaged calibration self-check failed."
+}
+
 $requiredBundleFiles = @(
     "_internal\runtime\node.exe",
     "_internal\research\tools\save-inspector\decrypt-save.mjs",
     "_internal\research\output\video-020357\frames\frame-0010-000005.000s.jpg",
     "_internal\research\output\video-020129\frames\frame-0027-000013.500s.jpg",
+    "_internal\research\output\live-wake-home-test\direct-capture-20260721-005704-141212.png",
+    "_internal\research\output\live-hover-services-test\direct-capture-20260721-005945-220477.png",
+    "_internal\research\output\live-open-recruitment-from-home-test\direct-capture-20260721-010250-822667.png",
     "_internal\licenses\LICENSE",
     "_internal\licenses\THIRD_PARTY_NOTICES.md"
 )
