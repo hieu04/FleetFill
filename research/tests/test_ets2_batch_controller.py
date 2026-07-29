@@ -25,6 +25,7 @@ from ets2_batch_controller import (  # noqa: E402
     expected_state_arguments,
     run_driver_phase,
     run_fill_phase,
+    run_fill_queue,
     run_plan,
     run_live,
     run_truck_phase,
@@ -504,8 +505,12 @@ class FakeRunner:
     def __init__(self, run_dir: Path) -> None:
         self.run_dir = run_dir
         self.steps = []
+        self.sub_runs = []
         self.calls = []
         self.current_state = None
+
+    def check_cancelled(self):
+        return None
 
     def run(self, label, script, arguments, report_prefix, **_kwargs):
         self.calls.append((label, script, list(arguments), report_prefix))
@@ -602,6 +607,7 @@ def live_args(phase: str, count: int, state: GarageState) -> SimpleNamespace:
         occupied=state.occupied,
         truck_present=state.truck_present,
         free=state.free,
+        garages=1,
     )
 
 
@@ -669,8 +675,35 @@ class CompanyPreflightTests(unittest.TestCase):
         with self.assertRaisesRegex(BatchAbort, "no completely empty"):
             validate_company_preflight(self.company(empty=False), 1)
 
+    def test_queue_requires_enough_empty_garages_and_total_balance(self) -> None:
+        company = self.company(money=3_000_000)
+        company["large_garages"].append(
+            {**company["large_garages"][0], "id": "garage.second"}
+        )
+        result = validate_company_preflight(company, 5, 2)
+        self.assertEqual(result["required_empty_garages"], 2)
+        self.assertEqual(result["planned_cost_eur"], 2_499_850)
+        with self.assertRaisesRegex(BatchAbort, "2 required"):
+            validate_company_preflight(self.company(money=3_000_000), 5, 2)
+
 
 class PhaseCompositionTests(unittest.TestCase):
+    def test_fill_queue_returns_home_and_restarts_from_home_for_each_garage(self):
+        initial = GarageState(0, 0, 5)
+        args = live_args("fill", 5, initial)
+        args.garages = 2
+        args.dynamic_garage = True
+        args.start_stage = "home"
+        with tempfile.TemporaryDirectory() as temp:
+            runner = FakeRunner(Path(temp))
+            final = run_fill_queue(runner, args)
+        self.assertEqual(final, GarageState(5, 0, 0))
+        scripts = [call[1] for call in runner.calls]
+        self.assertEqual(scripts.count("ets2_ui_return_home_probe.py"), 4)
+        self.assertEqual(scripts.count("ets2_ui_find_capacity_garage_probe.py"), 2)
+        self.assertEqual(len(runner.sub_runs), 2)
+        self.assertTrue(all(item["home_verified"] for item in runner.sub_runs))
+
     def test_truck_phase_composes_proven_probes(self):
         initial = GarageState(1, 1, 3)
         with tempfile.TemporaryDirectory() as temp:
@@ -883,7 +916,7 @@ class PhaseCompositionTests(unittest.TestCase):
         self.assertEqual(scripts.count("ets2_ui_find_capacity_garage_probe.py"), 1)
         self.assertEqual(scripts.count("ets2_ui_confirm_truck_purchase_probe.py"), 5)
         self.assertEqual(scripts.count("ets2_ui_confirm_driver_to_truck_probe.py"), 5)
-        self.assertEqual(scripts.count("ets2_ui_return_home_probe.py"), 1)
+        self.assertEqual(scripts.count("ets2_ui_return_home_probe.py"), 2)
         self.assertEqual(scripts.count("ets2_ui_reselect_truck_garage_probe.py"), 4)
         self.assertEqual(scripts.count("ets2_ui_reselect_hire_garage_probe.py"), 5)
 

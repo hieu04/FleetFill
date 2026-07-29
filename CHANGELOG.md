@@ -5,6 +5,52 @@ not produced a public release yet.
 
 ## Unreleased
 
+## 0.2.0 - In development
+
+### Added
+
+- A user-selectable queue of one to ten empty garages, with five matching truck
+  purchases and five first-available driver hires planned per garage.
+- One continuously checkpointed session ledger covering every sub-run, its
+  selected garage, guarded transactions, terminal Home verification, and
+  failure boundary.
+- Aggregate runtime validation and a single post-exit save audit capable of
+  verifying every garage changed by the queue.
+
+### Changed
+
+- A garage sub-run now ends only after the recruitment cards are recognized,
+  the top Home control is clicked, and the normal Home UI is verified. The next
+  sub-run starts automatically from that known state.
+- Steam Cloud preflight now proves the full queued cost and requires at least
+  as many completely empty five-slot garages as the requested queue length.
+- History records the queue length and all garages proven by the final audit.
+- Windows build staging now uses FleetFill's local app-data cache so repositories
+  stored in OneDrive cannot lock generated PyInstaller directories during a
+  rebuild.
+
+### Safety
+
+- The queue stops before the next garage if the recruitment-to-Home transition
+  or any other guarded probe cannot verify its result.
+- The queue still creates one complete recovery snapshot and sandbox restore
+  rehearsal before its first input. No save audit is required between
+  successful sub-runs; the authoritative comparison runs once after a clean
+  ETS2 exit.
+- The first live recruitment-to-Home boundary test passed with zero gameplay
+  transactions: the recognizer accepted the complete four-card recruitment
+  screen, issued one Home click, and verified the normal Home UI afterward.
+
+### Verified
+
+- The installed 0.2.0 package completed its first two-garage acceptance queue
+  with all 20 guarded transactions and both recruitment-to-Home boundaries
+  passing at runtime.
+- One post-exit audit verified `garage.munchen` and `garage.salzburg`, ten unique
+  new trucks, ten unique new drivers, and the exact EUR 2,499,850 deduction.
+  All 155 pre-existing vehicle configurations and the active delivery remained
+  unchanged.
+
 ## 0.1.4 - 2026-07-29
 
 ### Changed

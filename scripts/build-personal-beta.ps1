@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [string]$DistRoot
 )
 
 Set-StrictMode -Version Latest
@@ -12,7 +13,10 @@ $pyInstaller = Join-Path $projectRoot ".venv\Scripts\pyinstaller.exe"
 $inspector = Join-Path $projectRoot "research\tools\save-inspector"
 $spec = Join-Path $projectRoot "packaging\FleetFill.spec"
 $work = Join-Path $projectRoot "packaging\build"
-$dist = Join-Path $projectRoot "packaging\dist"
+if (-not $DistRoot) {
+    $DistRoot = Join-Path $env:LOCALAPPDATA "FleetFill\build\dist"
+}
+$dist = [System.IO.Path]::GetFullPath($DistRoot)
 
 if (-not (Test-Path -LiteralPath $python -PathType Leaf)) {
     throw "FleetFill environment not found at $python"
@@ -58,6 +62,7 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $packagedTools = Join-Path $dist "FleetFill\_internal\research\tools"
 $probeScripts = @(
     Get-ChildItem -LiteralPath $packagedTools -Filter "ets2_ui_*_probe.py" -File
+    Get-Item -LiteralPath (Join-Path $packagedTools "ets2_batch_controller.py")
     Get-Item -LiteralPath (Join-Path $packagedTools "finalize_batch_validation.py")
     Get-Item -LiteralPath (Join-Path $packagedTools "inspect_company_save.py")
     Get-Item -LiteralPath (Join-Path $packagedTools "rehearse_main_profile_restore.py")

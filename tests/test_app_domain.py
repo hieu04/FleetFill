@@ -108,6 +108,12 @@ class FillRequestTests(unittest.TestCase):
         self.assertEqual(request.driver_cost_eur, 7_500)
         self.assertEqual(request.total_cost_eur, 1_249_925)
 
+    def test_calculates_a_ten_garage_queue_and_passes_it_to_controller(self) -> None:
+        request = FillRequest(profile=Path("profile"), slots=5, garages=10)
+        self.assertEqual(request.total_cost_eur, 12_499_250)
+        arguments = controller_arguments(request, Path("project"))
+        self.assertEqual(arguments[arguments.index("--garages") + 1], "10")
+
     def test_rejects_missing_profile(self) -> None:
         self.assertEqual(
             validate_request(FillRequest(profile=None)),

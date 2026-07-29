@@ -16,6 +16,7 @@ if ($installerDefinition -notmatch '#define AppVersion "([^"]+)"') {
 }
 $appVersion = $Matches[1]
 $installerOutput = Join-Path $projectRoot "packaging\dist\installer\FleetFill-Personal-Beta-Setup-$appVersion.exe"
+$appDist = Join-Path $env:LOCALAPPDATA "FleetFill\build\dist\FleetFill"
 $compilerCandidates = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 7\ISCC.exe"),
     (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
@@ -39,7 +40,11 @@ if (-not $compiler) {
     throw "Inno Setup 6 or 7 is required. Install JRSoftware.InnoSetup with winget, then rerun this script."
 }
 
-& $compiler $installerScript
+if (-not (Test-Path -LiteralPath (Join-Path $appDist "FleetFill.exe") -PathType Leaf)) {
+    throw "FleetFill app bundle was not produced at $appDist"
+}
+
+& $compiler "/DAppSourceDir=$appDist" $installerScript
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 if (-not (Test-Path -LiteralPath $installerOutput -PathType Leaf)) {

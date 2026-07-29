@@ -100,6 +100,7 @@ class ProbeRunner:
         self.step_delay = step_delay
         self.capture_timeout = capture_timeout
         self.steps: list[StepRecord] = []
+        self.sub_runs: list[dict] = []
         self.current_state: GarageState | None = None
         self.cancel_file = cancel_file
 
@@ -333,10 +334,14 @@ def create_steam_cloud_preflight_backup(
     }
 
 
-def validate_company_preflight(company: dict, count: int) -> dict:
+def validate_company_preflight(
+    company: dict, count: int, garage_count: int = 1
+) -> dict:
     """Prove the backed-up company can afford and place the requested batch."""
 
-    planned_cost = count * (TRUCK_PRICE_EUR + DRIVER_HIRE_COST_EUR)
+    planned_cost = count * garage_count * (
+        TRUCK_PRICE_EUR + DRIVER_HIRE_COST_EUR
+    )
     balance = int(company.get("money_eur", -1))
     empty_large_garages = [
         garage["id"]
@@ -351,18 +356,25 @@ def validate_company_preflight(company: dict, count: int) -> dict:
             f"Insufficient company balance: EUR {balance:,} available, "
             f"EUR {planned_cost:,} required"
         )
-    if not empty_large_garages:
-        raise BatchAbort("The backed-up save contains no completely empty large garage")
+    if len(empty_large_garages) < garage_count:
+        raise BatchAbort(
+            "The backed-up save contains no completely empty large garage"
+            if not empty_large_garages
+            else "The backed-up save contains only "
+            f"{len(empty_large_garages)} completely empty large garage(s); "
+            f"{garage_count} required"
+        )
     return {
         "money_eur": balance,
         "planned_cost_eur": planned_cost,
         "remaining_balance_eur": balance - planned_cost,
         "empty_large_garages": empty_large_garages,
+        "required_empty_garages": garage_count,
     }
 
 
 def inspect_preflight_company(
-    backup: dict, tools_dir: Path, run_dir: Path, count: int
+    backup: dict, tools_dir: Path, run_dir: Path, count: int, garage_count: int = 1
 ) -> dict:
     """Decode only the backup copy and record a read-only company summary."""
 
@@ -398,7 +410,7 @@ def inspect_preflight_company(
                 + (f": {detail[0]}" if detail else "")
             )
     company = json.loads(report.read_text(encoding="utf-8"))
-    return validate_company_preflight(company, count)
+    return validate_company_preflight(company, count, garage_count)
 
 
 def initial_state(args: argparse.Namespace) -> GarageState:
@@ -653,6 +665,72 @@ def run_fill_phase(
         state = run_driver_phase(runner, args, state)
     finally:
         args.dynamic_garage = original_dynamic
+    runner.run(
+        "return-home-after-drivers",
+        "ets2_ui_return_home_probe.py",
+        [],
+        "RETURN_HOME_REPORT",
+    )
+    return state
+
+
+def run_fill_queue(
+    runner: ProbeRunner, args: argparse.Namespace
+) -> GarageState:
+    """Fill each requested garage, returning to verified Home between runs."""
+
+    state = initial_state(args)
+    for garage_index in range(1, args.garages + 1):
+        runner.check_cancelled()
+        args.garage_x = None
+        args.garage_y = None
+        args.garage_label = f"Dynamically selected garage {garage_index}"
+        args.garage_locator_report = None
+        args.dynamic_garage = True
+        state = initial_state(args)
+        first_step = len(runner.steps) + 1
+        record = {
+            "index": garage_index,
+            "status": "running",
+            "first_step": first_step,
+        }
+        runner.sub_runs.append(record)
+        write_checkpoint(runner, "running", "fill", state, args)
+        try:
+            state = run_fill_phase(runner, args, state)
+        except (BatchAbort, BatchCancelled, ValueError) as error:
+            state = runner.current_state or state
+            record.update(
+                {
+                    "status": "aborted",
+                    "error": str(error),
+                    "last_step": len(runner.steps),
+                    "garage": {
+                        "label": args.garage_label,
+                        "marker": [args.garage_x, args.garage_y]
+                        if args.garage_x is not None and args.garage_y is not None
+                        else None,
+                        "state": asdict(state),
+                    },
+                }
+            )
+            raise
+        record.update(
+            {
+                "status": "completed",
+                "last_step": len(runner.steps),
+                "garage": {
+                    "label": args.garage_label,
+                    "marker": [args.garage_x, args.garage_y],
+                    "state": asdict(state),
+                    "pan_locator_report": getattr(
+                        args, "garage_locator_report", None
+                    ),
+                },
+                "home_verified": True,
+            }
+        )
+        write_checkpoint(runner, "running", "fill", state, args)
     return state
 
 
@@ -684,7 +762,7 @@ def summary_payload(
         requested_transactions = args.count
         transactions = completed_drivers
     else:
-        requested_transactions = args.count * 2
+        requested_transactions = args.count * 2 * getattr(args, "garages", 1)
         transactions = completed_trucks + completed_drivers
     return {
         "status": status,
@@ -704,6 +782,12 @@ def summary_payload(
             "trucks": completed_trucks,
             "drivers": completed_drivers,
         },
+        "garage_count": getattr(args, "garages", 1),
+        "completed_garages": sum(
+            item.get("status") == "completed"
+            for item in getattr(runner, "sub_runs", [])
+        ),
+        "sub_runs": getattr(runner, "sub_runs", []),
         "expected_spend_eur": completed_trucks * TRUCK_PRICE_EUR
         + completed_drivers * DRIVER_HIRE_COST_EUR,
         "fleet_card": getattr(args, "card", None),
@@ -841,6 +925,12 @@ def build_parser() -> argparse.ArgumentParser:
     add_common_live_arguments(fill)
     fill.add_argument("--card", type=int, default=1, choices=[1])
     fill.add_argument(
+        "--garages",
+        type=int,
+        default=1,
+        help="Number of empty garages to fill automatically (1-10)",
+    )
+    fill.add_argument(
         "--start-stage",
         choices=["home"],
         default="home",
@@ -943,6 +1033,9 @@ def run_live(args: argparse.Namespace) -> int:
     if args.count < 1:
         print("BATCH_REFUSED: --count must be at least one")
         return 2
+    if args.phase == "fill" and not 1 <= args.garages <= 10:
+        print("BATCH_REFUSED: --garages must be between one and ten")
+        return 2
     dynamic = bool(getattr(args, "dynamic_garage", False))
     if not dynamic and (args.garage_x is None or args.garage_y is None):
         print(
@@ -1034,6 +1127,7 @@ def run_live(args: argparse.Namespace) -> int:
         "initial_state": asdict(state),
         "planned_final_state": asdict(preview),
         "count": args.count,
+        "garage_count": getattr(args, "garages", 1),
         "garage_marker": [args.garage_x, args.garage_y]
         if args.garage_x is not None and args.garage_y is not None
         else None,
@@ -1045,7 +1139,11 @@ def run_live(args: argparse.Namespace) -> int:
     if args.phase == "fill":
         try:
             preflight_payload["company"] = inspect_preflight_company(
-                backup, tools_dir, run_dir, args.count
+                backup,
+                tools_dir,
+                run_dir,
+                args.count,
+                args.garages,
             )
         except (BatchAbort, OSError, ValueError, json.JSONDecodeError) as error:
             preflight_payload["company_preflight_error"] = str(error)
@@ -1082,7 +1180,7 @@ def run_live(args: argparse.Namespace) -> int:
         elif args.phase == "drivers":
             state = run_driver_phase(runner, args, state)
         else:
-            state = run_fill_phase(runner, args, state)
+            state = run_fill_queue(runner, args)
         runner.check_cancelled()
     except BatchCancelled as error:
         state = runner.current_state or state

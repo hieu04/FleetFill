@@ -40,17 +40,18 @@ class ProfileInfo:
 class FillRequest:
     profile: Path | None
     slots: int = 5
+    garages: int = 1
     garage_policy: str = "automatic"
     truck_template: str = "scania_streamline_topline"
     driver_policy: str = "first_available"
 
     @property
     def truck_cost_eur(self) -> int:
-        return self.slots * TRUCK_PRICE_EUR
+        return self.slots * self.garages * TRUCK_PRICE_EUR
 
     @property
     def driver_cost_eur(self) -> int:
-        return self.slots * DRIVER_HIRE_COST_EUR
+        return self.slots * self.garages * DRIVER_HIRE_COST_EUR
 
     @property
     def total_cost_eur(self) -> int:
@@ -241,6 +242,8 @@ def validate_request(request: FillRequest) -> list[str]:
     errors: list[str] = []
     if not 1 <= request.slots <= 5:
         errors.append("Slots to fill must be between 1 and 5.")
+    if not 1 <= request.garages <= 10:
+        errors.append("Garages to fill must be between 1 and 10.")
     if request.profile is None:
         errors.append("Choose a disposable local ETS2 profile.")
         return errors
@@ -267,6 +270,8 @@ def validate_live_validation_request(
         errors.append("The one-plus-one live validation launcher is not armed.")
     if request.slots != 1:
         errors.append("Live validation is limited to exactly one truck and one driver.")
+    if request.garages != 1:
+        errors.append("Live validation is limited to exactly one garage.")
     if profile.name != VALIDATION_PROFILE_NAME:
         errors.append(
             f"Live validation requires the '{VALIDATION_PROFILE_NAME}' career."
@@ -291,6 +296,8 @@ def validate_graduated_live_request(
         errors.append(
             f"Graduated live testing requires the '{VALIDATION_PROFILE_NAME}' career."
         )
+    if request.garages != 1:
+        errors.append("Graduated live testing is limited to exactly one garage.")
     if request.profile is not None and profile.path.resolve() != request.profile.resolve():
         errors.append("The reviewed profile does not match the selected profile folder.")
     return errors
@@ -321,6 +328,8 @@ def validate_main_profile_validation_request(
             f"truck{'s' if expected_slots != 1 else ''} and {quantity} "
             f"driver{'s' if expected_slots != 1 else ''}."
         )
+    if request.garages != 1:
+        errors.append("Main-profile validation is limited to exactly one garage.")
     if not profile.is_steam_cloud:
         errors.append("Main-profile validation requires an authoritative Steam Cloud profile.")
     if expected_profile_name and profile.name != expected_profile_name:
@@ -392,6 +401,8 @@ def controller_arguments(
         "5",
         "--count",
         str(request.slots),
+        "--garages",
+        str(request.garages),
         "--card",
         "1",
         "--start-stage",
@@ -473,7 +484,7 @@ def simulator_arguments(
         "--output-dir",
         str(output_dir),
         "--transactions",
-        str(request.slots * 2),
+        str(request.slots * request.garages * 2),
         "--countdown",
         str(countdown),
         "--step-delay",

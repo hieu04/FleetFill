@@ -6,8 +6,9 @@ purchase matching trucks, hire available drivers, and assign both to the same
 garage.
 
 The repository contains the proven automation engine, its research tools, and
-the FleetFill desktop app. The fixed-scope personal beta exposes only the
-certified Steam Cloud 5+5 workflow. Separate, visibly armed developer launchers
+the FleetFill desktop app. Version 0.1.4 exposes the certified Steam Cloud 5+5
+workflow. The 0.2.0 release candidate extends that boundary into a guarded
+queue of one to ten empty garages. Separate, visibly armed developer launchers
 retain the disposable test career and exact 1+1, 2+2, 3+3, and 5+5 validation
 boundaries. Steam Cloud support includes proven identity, recovery-snapshot,
 sandbox-restore, company preflights, and post-exit semantic auditing.
@@ -79,15 +80,16 @@ until those combinations have their own recognition evidence and tests.
 
 ## Personal beta scope
 
-Version 0.1.4 preserves the exact installable scope that passed the
-maximum-capacity certification while adding the polished Windows shell:
+Version 0.1.4 remains the stable checkpoint. The installed 0.2.0 release
+candidate has passed its two-garage acceptance run and keeps the same
+per-garage choices while adding a queue length:
 
 - ETS2 1.60, English, 1920x1080 exclusive fullscreen, 100% Windows scaling
 - one named Steam Cloud career selected from the detected Steam userdata tree
-- first completely empty five-slot garage found by the guarded map workflow
+- one to ten completely empty five-slot garages found by the guarded map workflow
 - saved Scania Streamline Topline fleet configuration card 1
 - five first-available drivers
-- exactly five truck purchases and five hires
+- exactly five truck purchases and five hires per garage
 
 Other brands, other truck cards, pagination, alternative hiring policies,
 partial garages, and different display/game configurations remain future work.
@@ -95,8 +97,9 @@ The beta fails closed rather than silently widening this boundary.
 
 The app stores run reports, screenshots, and recovery snapshots under
 `%LOCALAPPDATA%\FleetFill`; an installed copy never writes beside its executable.
-After the ten UI transactions pass, FleetFill remains armed and waits for ETS2
-to exit cleanly. It then decodes and audits the new autosave automatically,
+After every queued sub-run returns to a verified Home screen, FleetFill remains
+armed and waits for ETS2 to exit cleanly. It then decodes and audits the new
+autosave once, verifying all requested garages automatically,
 updates History to `Live run: Verified`, and unlocks the next run. If FleetFill
 is closed first, reopening it resumes the newest pending audit. A failed audit
 keeps the next batch locked for that session and records its reason locally.
@@ -114,10 +117,13 @@ Build the portable Windows bundle:
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-personal-beta.ps1
 ```
 
-The resulting app is
-`packaging\dist\FleetFill\FleetFill.exe`. The bundle also contains an internal
-console worker and Node runtime because live orchestration intentionally runs
-outside the GUI process and copied binary saves must be decoded locally.
+The resulting staging app is
+`%LOCALAPPDATA%\FleetFill\build\dist\FleetFill\FleetFill.exe`. Staging outside
+the repository prevents OneDrive reparse-point locks from interrupting
+PyInstaller while it replaces generated files. The bundle also contains an
+internal console worker and Node runtime because live orchestration
+intentionally runs outside the GUI process and copied binary saves must be
+decoded locally.
 
 FleetFill's Windows icon assets are committed for reproducible packaging. To
 regenerate them after changing the vector-like drawing instructions, run:
@@ -208,9 +214,9 @@ python -m unittest discover -s research\tests -p "test_*.py" -v
 ```
 
 The same two suites run automatically on Windows for every pull request and
-every push to `main`. CI enforces 168 portable tests; seven calibrated visual
-tests report as skipped because their private ETS2 recording evidence remains
-in ignored local output. The full local run contains 175 tests. The required
+every push to `main`. Calibrated visual tests may report as skipped when their
+private ETS2 recording evidence is unavailable. The 0.2.0 development gate
+currently contains 205 passing local tests. The required
 status-check context is `Windows test suite`, produced by the `FleetFill tests`
 workflow.
 

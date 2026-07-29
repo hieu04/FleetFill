@@ -909,3 +909,63 @@ sidebar button, fixing the prior Setup-highlighted/History-visible mismatch.
 The desktop suite gained seven brand, Windows identity, chrome, navigation, and summary
 regressions. Together with the unchanged controller/save-audit suite, the offline
 release gate now contains 197 passing tests before packaging.
+
+## 40. Turn the single fill into a guarded garage queue
+
+The 0.1.4 checkpoint revealed a product-level limitation: FleetFill required a
+clean ETS2 exit and save audit after every garage. Repeating that lifecycle ten
+times defeated the purpose of automating repetitive company management. Version
+0.2.0 therefore changes the unit of supervision from one garage to one session
+containing one to ten garage sub-runs.
+
+Each sub-run retains the certified five-truck/five-driver transaction path. A
+new terminal boundary recognizes the restored recruitment-card screen after
+the fifth hire, clicks the stable top-left Home control, and verifies the normal
+Home UI. Only then may the queue reset its dynamic garage locator and start the
+next sub-run. Navigation remains separate from the ten economic transactions;
+failure to return Home stops the queue before another purchase can begin.
+
+The entire session shares one pre-input Steam Cloud recovery snapshot and
+sandbox restore rehearsal. Company preflight now proves the aggregate cost and
+the requested number of completely empty large garages. Runtime evidence stores
+one sub-run ledger with Home verification per garage. After the queue finishes,
+FleetFill waits for one clean ETS2 exit and compares the final autosave with the
+single baseline, auditing the exact number of changed garages, all new unique
+truck/driver pairs, aggregate spend, matching truck configurations, driver
+cities, unrelated garages, pre-existing vehicles, and the active delivery.
+
+The first offline implementation adds queue, transition, aggregate-audit,
+desktop-plan, history, and compatibility coverage. The full local gate contains
+205 passing tests. Live certification remains deliberately pending: the next
+boundary is a zero-transaction recruitment-to-Home probe followed by a
+supervised two-garage session before larger queue lengths are authorized for a
+0.2.0 release.
+
+The zero-transaction live boundary subsequently passed on ETS2 1.60. FleetFill
+recognized the recruitment agency with a title distance of 0.0132 and all four
+portrait regions above the integrity threshold, sent exactly one click to the
+top-left Home control, and recognized Home with a navigation distance of
+0.0513. No purchase, hire, or keyboard event occurred. This authorizes the
+transition for the first packaged two-garage acceptance test; it does not yet
+certify the complete queue.
+
+The 0.2.0 package gate also exposed a persistent OneDrive lock on PyInstaller's
+generated distribution directory. The portable bundle now stages under
+`%LOCALAPPDATA%\FleetFill\build\dist`, while Inno Setup consumes that verified
+bundle and leaves only the final installer in `packaging\dist\installer`. The
+packaged smoke gate explicitly loads the queue controller in addition to every
+screen probe and verifies all fourteen calibration assets before installer
+creation.
+
+The installed 0.2.0 package then passed the supervised two-garage acceptance
+run on the Steam Cloud main career. Both sub-runs completed their five truck
+purchases, five driver hires, and terminal recruitment-to-Home verification:
+20 of 20 guarded economic actions completed. A single clean ETS2 exit triggered
+one aggregate audit. It proved that previously empty `garage.munchen` and
+`garage.salzburg` each received five unique truck/driver pairs, the online
+purchase, company truck, and company driver counters each rose by ten, and the
+company balance moved from EUR 73,894,019 to EUR 71,394,169—exactly the expected
+EUR 2,499,850 queue cost. All 155 pre-existing vehicle configurations, every
+unrelated garage, and the active delivery were preserved. This certifies the
+queue loop, its between-garage Home boundary, and the one-exit aggregate audit
+in the installed product.

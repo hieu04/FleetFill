@@ -250,11 +250,42 @@ def changed_slot_indexes(
     ]
 
 
+def garage_batch_records(
+    old_garages: dict[str, dict[str, list[str]]],
+    new_garages: dict[str, dict[str, list[str]]],
+    changed: list[str],
+) -> list[dict[str, object]]:
+    """Describe every changed garage and preserve driver-to-city ownership."""
+
+    records = []
+    for target_id in changed:
+        old_target = old_garages[target_id]
+        new_target = new_garages[target_id]
+        target_indexes = changed_slot_indexes(old_target, new_target)
+        records.append(
+            {
+                "garage_id": target_id,
+                "city": target_id.removeprefix("garage."),
+                "before": old_target,
+                "after": new_target,
+                "indexes": target_indexes,
+                "vehicle_ids": [
+                    new_target["vehicles"][index] for index in target_indexes
+                ],
+                "driver_ids": [
+                    new_target["drivers"][index] for index in target_indexes
+                ],
+            }
+        )
+    return records
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("old", type=Path)
     parser.add_argument("new", type=Path)
     parser.add_argument("--count", type=int, required=True)
+    parser.add_argument("--garages", type=int, default=1)
     parser.add_argument("--expected-cost", type=int, required=True)
     parser.add_argument("--expected-plate-country")
     parser.add_argument("--output", type=Path, required=True)
@@ -306,14 +337,18 @@ def main() -> int:
         or [value != "null" for value in old_garages[garage_id]["drivers"]]
         != [value != "null" for value in new_garages[garage_id]["drivers"]]
     ]
-    target_id = changed[0] if len(changed) == 1 else None
-    target_city = target_id.removeprefix("garage.") if target_id else None
-    old_target = old_garages.get(target_id, {"vehicles": [], "drivers": []})
-    new_target = new_garages.get(target_id, {"vehicles": [], "drivers": []})
-
-    target_indexes = changed_slot_indexes(old_target, new_target)
-    target_vehicle_ids = [new_target["vehicles"][index] for index in target_indexes]
-    target_driver_ids = [new_target["drivers"][index] for index in target_indexes]
+    target_records = garage_batch_records(old_garages, new_garages, changed)
+    target_vehicle_ids = [
+        vehicle_id
+        for target in target_records
+        for vehicle_id in target["vehicle_ids"]
+    ]
+    target_driver_ids = [
+        driver_id
+        for target in target_records
+        for driver_id in target["driver_ids"]
+    ]
+    total_count = args.count * args.garages
     vehicles = [
         vehicle_details(new_units, vehicle_id)
         for vehicle_id in target_vehicle_ids
@@ -321,24 +356,26 @@ def main() -> int:
     ]
     accessory_sets = [set(vehicle["accessory_paths"]) for vehicle in vehicles]
     drivers = []
-    for driver_id in target_driver_ids:
-        if driver_id == "null":
-            continue
-        body = find_unit(new_units, "driver_ai", driver_id)
-        drivers.append(
-            {
-                "driver_id": driver_id,
-                "hometown": scalar(body, "hometown").strip('"'),
-                "current_city": scalar(body, "current_city").strip('"'),
-            }
-        )
+    for target in target_records:
+        for driver_id in target["driver_ids"]:
+            if driver_id == "null":
+                continue
+            body = find_unit(new_units, "driver_ai", driver_id)
+            drivers.append(
+                {
+                    "driver_id": driver_id,
+                    "target_city": target["city"],
+                    "hometown": scalar(body, "hometown").strip('"'),
+                    "current_city": scalar(body, "current_city").strip('"'),
+                }
+            )
 
     unrelated_driver_slots_unchanged = True
     unrelated_vehicle_occupancy_unchanged = True
     preexisting_vehicle_configs_preserved = True
     compared_preexisting_vehicles = 0
     for garage_id in sorted(set(old_garages) & set(new_garages)):
-        if garage_id == target_id:
+        if garage_id in changed:
             continue
         old_garage = old_garages[garage_id]
         new_garage = new_garages[garage_id]
@@ -366,29 +403,44 @@ def main() -> int:
         ),
         "company_balance_reconciled": new_money == reconciled_balance,
         "online_truck_purchase_counter_increased": new_online_purchases
-        == old_online_purchases + args.count,
-        "company_truck_count_increased": len(new_trucks) == len(old_trucks) + args.count,
-        "company_driver_count_increased": len(new_drivers) == len(old_drivers) + args.count,
-        "exactly_one_garage_changed": len(changed) == 1,
-        "target_was_completely_empty": len(old_target["vehicles"]) >= args.count
-        and all(value == "null" for value in old_target["vehicles"])
-        and all(value == "null" for value in old_target["drivers"]),
-        "target_received_exact_batch": len(target_indexes) == args.count
+        == old_online_purchases + total_count,
+        "company_truck_count_increased": len(new_trucks)
+        == len(old_trucks) + total_count,
+        "company_driver_count_increased": len(new_drivers)
+        == len(old_drivers) + total_count,
+        "exact_requested_garages_changed": len(changed) == args.garages,
+        "targets_were_completely_empty": len(target_records) == args.garages
         and all(
-            old_target["vehicles"][index] == "null"
-            and old_target["drivers"][index] == "null"
-            and new_target["vehicles"][index] != "null"
-            and new_target["drivers"][index] != "null"
-            for index in target_indexes
+            len(target["before"]["vehicles"]) >= args.count
+            and all(value == "null" for value in target["before"]["vehicles"])
+            and all(value == "null" for value in target["before"]["drivers"])
+            for target in target_records
+        ),
+        "targets_received_exact_batches": len(target_records) == args.garages
+        and all(
+            len(target["indexes"]) == args.count
+            and all(
+                target["before"]["vehicles"][index] == "null"
+                and target["before"]["drivers"][index] == "null"
+                and target["after"]["vehicles"][index] != "null"
+                and target["after"]["drivers"][index] != "null"
+                for index in target["indexes"]
+            )
+            for target in target_records
         ),
         "unchanged_target_slots_preserved": all(
-            old_target["vehicles"][index] == new_target["vehicles"][index]
-            and old_target["drivers"][index] == new_target["drivers"][index]
-            for index in range(len(old_target["vehicles"]))
-            if index not in target_indexes
+            all(
+                target["before"]["vehicles"][index]
+                == target["after"]["vehicles"][index]
+                and target["before"]["drivers"][index]
+                == target["after"]["drivers"][index]
+                for index in range(len(target["before"]["vehicles"]))
+                if index not in target["indexes"]
+            )
+            for target in target_records
         ),
-        "target_trucks_are_unique": len(set(target_vehicle_ids)) == args.count,
-        "target_drivers_are_unique": len(set(target_driver_ids)) == args.count,
+        "target_trucks_are_unique": len(set(target_vehicle_ids)) == total_count,
+        "target_drivers_are_unique": len(set(target_driver_ids)) == total_count,
         "target_trucks_are_in_company_fleet": all(
             vehicle_id in new_trucks for vehicle_id in target_vehicle_ids
         ),
@@ -408,10 +460,10 @@ def main() -> int:
         "all_truck_configurations_match": bool(accessory_sets)
         and all(paths == accessory_sets[0] for paths in accessory_sets[1:]),
         "all_driver_hometowns_match_target": all(
-            driver["hometown"] == target_city for driver in drivers
+            driver["hometown"] == driver["target_city"] for driver in drivers
         ),
         "all_driver_current_cities_match_target": all(
-            driver["current_city"] == target_city for driver in drivers
+            driver["current_city"] == driver["target_city"] for driver in drivers
         ),
     }
     if args.expected_plate_country:
@@ -423,8 +475,9 @@ def main() -> int:
     report = {
         "passed": all(checks.values()),
         "checks": checks,
-        "target_garage": target_id,
-        "target_city": target_city,
+        "target_garage": changed[0] if len(changed) == 1 else None,
+        "target_garages": changed,
+        "target_city": target_records[0]["city"] if len(target_records) == 1 else None,
         "changed_garages": changed,
         "money": {
             "before": old_money,
@@ -442,9 +495,7 @@ def main() -> int:
         },
         "company_trucks": {"before": len(old_trucks), "after": len(new_trucks)},
         "company_drivers": {"before": len(old_drivers), "after": len(new_drivers)},
-        "garage_before": old_target,
-        "garage_after": new_target,
-        "changed_slot_indexes": target_indexes,
+        "garage_batches": target_records,
         "new_trucks": vehicles,
         "new_drivers": drivers,
         "preexisting_vehicles_compared": compared_preexisting_vehicles,

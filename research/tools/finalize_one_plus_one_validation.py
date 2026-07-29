@@ -23,8 +23,11 @@ PER_SLOT_COST_EUR = 249_985
 def load_run_paths(run_dir: Path) -> tuple[Path, Path, int]:
     preflight = json.loads((run_dir / "preflight.json").read_text(encoding="utf-8"))
     count = int(preflight.get("count", 0))
+    garages = int(preflight.get("garage_count", 1))
     if preflight.get("phase") != "fill" or not 1 <= count <= 5:
         raise ValueError("Run evidence is not a guarded one-to-five fill batch")
+    if not 1 <= garages <= 10:
+        raise ValueError("Run evidence has an invalid garage queue length")
     profile = Path(preflight["backup"]["profile"])
     backup = preflight["backup"]
     before_save = Path(
@@ -37,6 +40,14 @@ def load_run_paths(run_dir: Path) -> tuple[Path, Path, int]:
     if not profile.is_dir() or not before.is_file():
         raise ValueError("Run evidence does not contain a usable profile backup")
     return profile, before, count
+
+
+def load_run_garage_count(run_dir: Path) -> int:
+    preflight = json.loads((run_dir / "preflight.json").read_text(encoding="utf-8"))
+    garages = int(preflight.get("garage_count", 1))
+    if not 1 <= garages <= 10:
+        raise ValueError("Run evidence has an invalid garage queue length")
+    return garages
 
 
 def run_checked(command: list[str], *, cwd: Path | None = None) -> None:
@@ -61,12 +72,16 @@ def record_save_audit(
     if report and report.is_file():
         audit = json.loads(report.read_text(encoding="utf-8"))
         target_garage = audit.get("target_garage")
+        target_garages = audit.get("target_garages", [])
+    else:
+        target_garages = []
     runtime_report = run_dir / "validation-report.json"
     if runtime_report.is_file():
         payload = json.loads(runtime_report.read_text(encoding="utf-8"))
         payload["deep_save_verification"] = "passed" if passed else "failed"
         payload["save_audit"] = str(report.resolve()) if report else None
         payload["target_garage"] = target_garage
+        payload["target_garages"] = target_garages
         runtime_report.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     desktop_record = run_dir / "desktop-run.json"
     if desktop_record.is_file():
@@ -75,6 +90,7 @@ def record_save_audit(
         payload["save_audit_report"] = str(report.resolve()) if report else None
         payload["save_audit_error"] = error
         payload["target_garage"] = target_garage
+        payload["target_garages"] = target_garages
         desktop_record.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
 
@@ -91,6 +107,7 @@ def main() -> int:
 
     run_dir = args.run_dir.resolve()
     profile, before, count = load_run_paths(run_dir)
+    garages = load_run_garage_count(run_dir)
     current = profile / "save" / "autosave" / "game.sii"
     if not current.is_file():
         print(f"VALIDATION_REFUSED: Current autosave was not found: {current}")
@@ -123,8 +140,10 @@ def main() -> int:
             str(after_text),
             "--count",
             str(count),
+            "--garages",
+            str(garages),
             "--expected-cost",
-            str(count * PER_SLOT_COST_EUR),
+            str(count * garages * PER_SLOT_COST_EUR),
             "--output",
             str(report),
         ],

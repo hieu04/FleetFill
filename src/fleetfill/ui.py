@@ -215,6 +215,24 @@ class SetupPage(QWidget):
         grid.addWidget(self.slots_combo, 3, 0)
         grid.addWidget(self.driver_combo, 3, 1)
 
+        grid.addWidget(field_label("Garages to fill"), 4, 0)
+        self.garages_combo = QComboBox()
+        for count in range(1, 11):
+            self.garages_combo.addItem(
+                f"{count} garage{'s' if count != 1 else ''}", count
+            )
+        self.garages_combo.setCurrentIndex(0)
+        self.garages_combo.setEnabled(
+            personal_beta_enabled
+            or not (
+                live_validation_enabled
+                or graduated_live_enabled
+                or bool(main_profile_name)
+            )
+        )
+        self.garages_combo.currentIndexChanged.connect(self._update_plan)
+        grid.addWidget(self.garages_combo, 5, 0)
+
         safety, safety_layout = card_layout(amber=True)
         safety_layout.setContentsMargins(16, 14, 16, 14)
         safety_title = label("◆  Guarded by preflight checks", "warningText")
@@ -245,6 +263,7 @@ class SetupPage(QWidget):
         self.review_values: dict[str, QLabel] = {}
         for key, title in (
             ("garage", "Garage"),
+            ("garage_count", "Garages"),
             ("trucks", "Trucks"),
             ("drivers", "Drivers"),
             ("truck_cost", "Truck purchases"),
@@ -286,7 +305,7 @@ class SetupPage(QWidget):
         review.addWidget(self.review_button)
         self.integration_note = label(
             (
-                "Personal beta - certified Steam Cloud 5+5 garage fill."
+                "Personal beta - guarded Steam Cloud queue of 1–10 garages."
                 if personal_beta_enabled
                 else (
                 "Validation mode — exactly one truck and one driver."
@@ -380,6 +399,7 @@ class SetupPage(QWidget):
         return FillRequest(
             profile=Path(raw_path) if raw_path else None,
             slots=int(self.slots_combo.currentData() or 5),
+            garages=int(self.garages_combo.currentData() or 1),
         )
 
     def current_profile_info(self) -> ProfileInfo | None:
@@ -404,8 +424,10 @@ class SetupPage(QWidget):
             )
 
         self.review_values["garage"].setText("Automatic")
-        self.review_values["trucks"].setText(f"{request.slots} identical")
-        self.review_values["drivers"].setText(str(request.slots))
+        self.review_values["garage_count"].setText(str(request.garages))
+        total_slots = request.slots * request.garages
+        self.review_values["trucks"].setText(f"{total_slots} identical")
+        self.review_values["drivers"].setText(str(total_slots))
         self.review_values["truck_cost"].setText(money(request.truck_cost_eur))
         self.review_values["hire_cost"].setText(money(request.driver_cost_eur))
         self.total_value.setText(money(request.total_cost_eur))
@@ -537,8 +559,10 @@ class SetupPage(QWidget):
         message.setWindowTitle("FleetFill safety check passed")
         message.setIcon(QMessageBox.Icon.Information)
         message.setText(
-            f"{preflight.summary}. FleetFill will buy {request.slots} matching "
-            f"trucks and hire {request.slots} drivers into the same empty garage."
+            f"{preflight.summary}. FleetFill will fill {request.garages} empty "
+            f"garage{'s' if request.garages != 1 else ''}, buying "
+            f"{request.slots * request.garages} matching trucks and hiring "
+            f"{request.slots * request.garages} drivers."
         )
         message.setDetailedText(command)
         if self.live_execution_enabled:
@@ -587,7 +611,8 @@ class SetupPage(QWidget):
                     f"Estimated spend: {money(request.total_cost_eur)}\n\n"
                     "This WILL control the named Steam Cloud career after a "
                     "10-second countdown. It is restricted to exactly "
-                    f"{request.slots} truck(s) and {request.slots} driver(s). A full "
+                    f"{request.garages} garage(s), {request.slots} truck(s) and "
+                    f"{request.slots} driver(s) per garage. A full "
                     "recovery snapshot, sandbox restore "
                     "rehearsal, balance check, and empty-garage check must pass first."
                     if self.cloud_profile_mode
@@ -602,7 +627,11 @@ class SetupPage(QWidget):
             )
             run_button = message.addButton(
                 (
-                    "Start 5+5 garage fill"
+                    (
+                        f"Start {request.garages}-garage queue"
+                        if request.garages != 1
+                        else "Start 5+5 garage fill"
+                    )
                     if self.personal_beta_enabled
                     else (
                     (
@@ -675,7 +704,7 @@ class HistoryPage(QWidget):
             ("actions", "GUARDED ACTIONS"),
             ("runtime", "RUNTIME EVIDENCE"),
             ("audit", "SAVE AUDIT"),
-            ("garage", "VERIFIED GARAGE"),
+            ("garage", "VERIFIED GARAGES"),
         )
         for column, (key, title) in enumerate(metric_definitions):
             metrics.addWidget(label(title, "metricLabel"), 0, column)
@@ -728,7 +757,8 @@ class HistoryPage(QWidget):
             outcome = latest.state.replace("_", " ").title()
         self.history_title.setText(f"{kind}: {outcome}")
         self.history_meta.setText(
-            f"{latest.created_at}  •  {latest.profile_name}  •  {latest.slots} slot(s)"
+            f"{latest.created_at}  •  {latest.profile_name}  •  "
+            f"{latest.garages} garage(s) × {latest.slots} slot(s)"
         )
 
         if latest.save_audit_passed is True:
@@ -763,7 +793,12 @@ class HistoryPage(QWidget):
             if latest.validation_passed is True
             else "Not required"
         )
-        self.metric_values["garage"].setText(latest.target_garage or "—")
+        verified_garages = tuple(latest.target_garages)
+        self.metric_values["garage"].setText(
+            str(len(verified_garages))
+            if verified_garages
+            else latest.target_garage or "—"
+        )
 
         detail_lines = []
         if latest.error:
@@ -877,6 +912,7 @@ class MainWindow(QMainWindow):
         self._active_run_dir: Path | None = None
         self._active_profile_name = ""
         self._active_slots = 0
+        self._active_garages = 0
         self._active_simulated = True
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self.setWindowTitle("FleetFill")
@@ -921,7 +957,7 @@ class MainWindow(QMainWindow):
         top.addLayout(brand_copy)
         top.addStretch()
         mode = (
-            "Personal beta - 5+5 ready"
+            "Personal beta - queue ready"
             if personal_beta_enabled
             else
             "1+1 validation armed"
@@ -1131,6 +1167,7 @@ class MainWindow(QMainWindow):
         self._active_run_dir = run_dir
         self._active_profile_name = profile.name
         self._active_slots = request.slots
+        self._active_garages = request.garages
         self._active_simulated = True
         self.setup_page.set_run_kind(simulated=True)
         self.setup_page.set_execution_locked(True)
@@ -1141,7 +1178,7 @@ class MainWindow(QMainWindow):
         self.supervisor.start(
             command,
             run_dir,
-            request.slots * 2,
+            request.slots * request.garages * 2,
             simulated=True,
         )
 
@@ -1193,6 +1230,7 @@ class MainWindow(QMainWindow):
         self._active_run_dir = run_dir
         self._active_profile_name = profile.name
         self._active_slots = request.slots
+        self._active_garages = request.garages
         self._active_simulated = False
         self.setup_page.set_run_kind(simulated=False, live_label=live_label)
         self.setup_page.set_execution_locked(True)
@@ -1203,7 +1241,7 @@ class MainWindow(QMainWindow):
         self.supervisor.start(
             command,
             run_dir,
-            request.slots * 2,
+            request.slots * request.garages * 2,
             simulated=False,
             live_enabled=self.live_execution_enabled,
         )
@@ -1227,7 +1265,9 @@ class MainWindow(QMainWindow):
             if model.state == RunnerState.SUCCEEDED:
                 try:
                     evidence = verify_batch_run(
-                        self._active_run_dir, expected_count=self._active_slots
+                        self._active_run_dir,
+                        expected_count=self._active_slots,
+                        expected_garages=self._active_garages,
                     )
                     validation_passed = evidence.passed
                     validation_report = evidence.report_path
@@ -1250,6 +1290,7 @@ class MainWindow(QMainWindow):
             run_id=self._active_run_dir.name,
             profile_name=self._active_profile_name,
             slots=self._active_slots,
+            garages=self._active_garages,
             simulated=self._active_simulated,
             validation_passed=validation_passed,
             validation_report=validation_report,

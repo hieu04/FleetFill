@@ -6,12 +6,35 @@ from verify_fill_batch_save import (
     active_delivery_preserved,
     active_delivery_state,
     changed_slot_indexes,
+    garage_batch_records,
     profit_entry_net,
     unique_new_profit_events,
 )
 
 
 class FillBatchSlotDiffTests(unittest.TestCase):
+    def test_multi_garage_records_keep_each_city_and_pairing(self) -> None:
+        old = {
+            city: {"vehicles": ["null"] * 5, "drivers": ["null"] * 5}
+            for city in ("garage.paris", "garage.berlin")
+        }
+        new = {
+            "garage.paris": {
+                "vehicles": ["vehicle.1", *(["null"] * 4)],
+                "drivers": ["driver.1", *(["null"] * 4)],
+            },
+            "garage.berlin": {
+                "vehicles": ["vehicle.2", *(["null"] * 4)],
+                "drivers": ["driver.2", *(["null"] * 4)],
+            },
+        }
+        records = garage_batch_records(
+            old, new, ["garage.berlin", "garage.paris"]
+        )
+        self.assertEqual([record["city"] for record in records], ["berlin", "paris"])
+        self.assertEqual(records[0]["driver_ids"], ["driver.2"])
+        self.assertEqual(records[1]["vehicle_ids"], ["vehicle.1"])
+
     def test_one_plus_one_in_five_slot_garage_changes_one_paired_index(self) -> None:
         before = {
             "vehicles": ["null"] * 5,
