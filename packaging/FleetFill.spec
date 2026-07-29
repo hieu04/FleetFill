@@ -7,6 +7,8 @@ from importlib.metadata import distribution
 ROOT = Path(SPECPATH).resolve().parent
 SRC = ROOT / "src"
 TOOLS = ROOT / "research" / "tools"
+APP_ICON_PNG = ROOT / "assets" / "fleetfill-app.png"
+APP_ICON_ICO = ROOT / "assets" / "fleetfill-app.ico"
 
 reference_files = (
     "research/output/video-020357/frames/frame-0010-000005.000s.jpg",
@@ -28,6 +30,8 @@ reference_files = (
 required_paths = [ROOT / relative for relative in reference_files]
 required_paths.extend(
     [
+        APP_ICON_PNG,
+        APP_ICON_ICO,
         TOOLS / "save-inspector" / "decrypt-save.mjs",
         TOOLS / "save-inspector" / "node_modules" / "@trucky" / "sii-decrypt-ts",
     ]
@@ -80,7 +84,10 @@ gui = Analysis(
     [str(SRC / "fleetfill" / "personal_beta.py")],
     pathex=[str(SRC)],
     binaries=[],
-    datas=[],
+    datas=[
+        (str(APP_ICON_PNG), "assets"),
+        (str(APP_ICON_ICO), "assets"),
+    ],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -113,6 +120,7 @@ gui_exe = EXE(
     [],
     exclude_binaries=True,
     name="FleetFill",
+    icon=str(APP_ICON_ICO),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -131,6 +139,7 @@ worker_exe = EXE(
     [],
     exclude_binaries=True,
     name="FleetFillWorker",
+    icon=str(APP_ICON_ICO),
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

@@ -77,6 +77,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $requiredBundleFiles = @(
+    "_internal\assets\fleetfill-app.png",
+    "_internal\assets\fleetfill-app.ico",
     "_internal\runtime\node.exe",
     "_internal\research\tools\save-inspector\decrypt-save.mjs",
     "_internal\research\output\video-020357\frames\frame-0010-000005.000s.jpg",

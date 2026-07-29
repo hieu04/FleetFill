@@ -1,5 +1,5 @@
 #define AppName "FleetFill"
-#define AppVersion "0.1.3"
+#define AppVersion "0.1.4"
 #define AppPublisher "FleetFill contributors"
 #define AppExeName "FleetFill.exe"
 
@@ -16,6 +16,7 @@ DefaultDirName={localappdata}\Programs\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
+SetupIconFile=..\assets\fleetfill-app.ico
 OutputDir=dist\installer
 OutputBaseFilename=FleetFill-Personal-Beta-Setup-{#AppVersion}
 Compression=lzma2/ultra64
@@ -38,8 +39,8 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 Source: "dist\FleetFill\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; AppUserModelID: "FleetFill.Desktop"
+Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon; AppUserModelID: "FleetFill.Desktop"
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; Flags: nowait postinstall skipifsilent

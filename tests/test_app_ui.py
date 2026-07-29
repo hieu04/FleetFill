@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
+from PySide6.QtCore import QPoint, Qt  # noqa: E402
 from PySide6.QtWidgets import QApplication  # noqa: E402
 
 from fleetfill.runner import (  # noqa: E402
@@ -37,6 +38,46 @@ class MainWindowTests(unittest.TestCase):
             ["Setup", "History", "Settings"],
         )
         self.assertEqual(self.window.stack.count(), 3)
+
+    def test_programmatic_page_change_keeps_sidebar_selection_in_sync(self) -> None:
+        self.window._show_page(1)
+
+        self.assertEqual(self.window.stack.currentIndex(), 1)
+        self.assertTrue(self.window.nav_buttons[1].isChecked())
+        self.assertFalse(self.window.nav_buttons[0].isChecked())
+
+    def test_window_uses_packaged_brand_icon_when_available(self) -> None:
+        self.assertFalse(self.window.windowIcon().isNull())
+
+    def test_window_has_integrated_release_chrome(self) -> None:
+        self.assertTrue(
+            self.window.windowFlags() & Qt.WindowType.FramelessWindowHint
+        )
+        self.assertEqual(self.window.title_bar.objectName(), "topBar")
+        self.assertEqual(self.window.minimize_button.accessibleName(), "Minimize")
+        self.assertEqual(self.window.maximize_button.accessibleName(), "Maximize")
+        self.assertEqual(self.window.close_button.accessibleName(), "Close")
+
+    def test_custom_chrome_preserves_native_hit_regions(self) -> None:
+        self.window.show()
+        self.app.processEvents()
+
+        self.assertEqual(
+            self.window._native_hit_test(self.window.mapToGlobal(QPoint(2, 200))),
+            10,
+        )
+        self.assertEqual(
+            self.window._native_hit_test(self.window.mapToGlobal(QPoint(300, 35))),
+            2,
+        )
+        maximize_center = self.window.maximize_button.mapToGlobal(
+            self.window.maximize_button.rect().center()
+        )
+        close_center = self.window.close_button.mapToGlobal(
+            self.window.close_button.rect().center()
+        )
+        self.assertEqual(self.window._native_hit_test(maximize_center), 9)
+        self.assertEqual(self.window._native_hit_test(close_center), 1)
 
     def test_default_plan_is_five_trucks_and_drivers(self) -> None:
         page = self.window.setup_page
@@ -263,7 +304,10 @@ class MainWindowTests(unittest.TestCase):
                     window.history_page.history_title.text(), "Simulation: Succeeded"
                 )
                 self.assertIn(
-                    "Test profile", window.history_page.history_details.text()
+                    "Test profile", window.history_page.history_meta.text()
+                )
+                self.assertEqual(
+                    window.history_page.metric_values["actions"].text(), "0 / 2"
                 )
             finally:
                 window.close()

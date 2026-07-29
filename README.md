@@ -79,8 +79,8 @@ until those combinations have their own recognition evidence and tests.
 
 ## Personal beta scope
 
-Version 0.1.3 deliberately freezes the installable beta to the exact
-environment and path that passed the maximum-capacity certification:
+Version 0.1.4 preserves the exact installable scope that passed the
+maximum-capacity certification while adding the polished Windows shell:
 
 - ETS2 1.60, English, 1920x1080 exclusive fullscreen, 100% Windows scaling
 - one named Steam Cloud career selected from the detected Steam userdata tree
@@ -118,6 +118,13 @@ The resulting app is
 `packaging\dist\FleetFill\FleetFill.exe`. The bundle also contains an internal
 console worker and Node runtime because live orchestration intentionally runs
 outside the GUI process and copied binary saves must be decoded locally.
+
+FleetFill's Windows icon assets are committed for reproducible packaging. To
+regenerate them after changing the vector-like drawing instructions, run:
+
+```powershell
+.\.venv\Scripts\python.exe .\scripts\build-brand-assets.py
+```
 
 After installing Inno Setup 6 or 7, build the normal per-user installer with:
 
@@ -305,8 +312,13 @@ certified 3+3; 5+5 uniquely proves that one empty large garage becomes completel
 full. Its zero-input preflight, supervised ten-action run, and independent
 post-exit audit have all passed on the synchronized main profile.
 
-The shell uses PySide6 6.10.1 and already provides the approved Setup, History,
-and Settings navigation. Setup discovers local ETS2 profiles, prefers the
+The shell uses PySide6 6.10.1 and provides the approved Setup, History, and
+Settings navigation with a native Windows application identity and bundled
+garage icon. Its integrated title bar matches the application while preserving
+native dragging, resizing, maximize/restore, and Windows 11 snap layouts.
+History presents the latest result as a compact status and metrics summary while
+retaining selectable report and recovery paths. Setup discovers
+local ETS2 profiles, prefers the
 disposable Automation Test profile, validates the selected autosave, calculates
 the exact truck-and-driver estimate, and exposes a guarded review workflow.
 Before review, the local live launchers prove from the current `game.log.txt`
