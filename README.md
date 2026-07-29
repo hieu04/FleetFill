@@ -80,9 +80,9 @@ until those combinations have their own recognition evidence and tests.
 
 ## Personal beta scope
 
-Version 0.1.4 remains the stable checkpoint. The installed 0.2.0 release
-candidate has passed its two-garage acceptance run and keeps the same
-per-garage choices while adding a queue length:
+Version 0.2.0 is the current stable personal release. It passed its installed
+two-garage acceptance run and keeps the same per-garage choices while adding a
+queue length:
 
 - ETS2 1.60, English, 1920x1080 exclusive fullscreen, 100% Windows scaling
 - one named Steam Cloud career selected from the detected Steam userdata tree

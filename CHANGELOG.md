@@ -1,11 +1,11 @@
 # Changelog
 
-All notable FleetFill development milestones are recorded here. The project has
-not produced a public release yet.
+All notable FleetFill development milestones are recorded here. FleetFill is
+currently distributed as a personal-beta Windows application.
 
 ## Unreleased
 
-## 0.2.0 - In development
+## 0.2.0 - 2026-07-30
 
 ### Added
 
