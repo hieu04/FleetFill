@@ -9,7 +9,7 @@ from pathlib import Path
 # These imports make the dynamically dispatched probe dependencies visible to
 # frozen-build analysis without importing the Qt GUI into the worker process.
 import numpy  # noqa: F401
-from PIL import Image, ImageGrab  # noqa: F401
+from PIL import Image, ImageDraw, ImageFont, ImageGrab  # noqa: F401
 
 import fleetfill.domain  # noqa: F401
 import fleetfill.preflight  # noqa: F401

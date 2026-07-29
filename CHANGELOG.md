@@ -5,6 +5,13 @@ not produced a public release yet.
 
 ## Unreleased
 
+### Fixed
+
+- Included the dynamically loaded Pillow drawing and font modules in the frozen
+  worker, fixing an immediate Step 1 failure in the installed personal beta.
+- Added exhaustive packaged-probe import gates so the installer build fails
+  before release if any guarded UI or post-run tool cannot start.
+
 ### Added
 
 - A fixed-scope personal-beta desktop mode that exposes only the certified
@@ -22,6 +29,9 @@ not produced a public release yet.
   desktop shortcut, normal uninstall support, and no administrator requirement.
 - Packaged smoke gates for worker dispatch, simulation, required resources,
   recognizer loading, Windows rendering, and copied encrypted-save decoding.
+- Exhaustive no-input import smoke checks for every packaged ETS2 UI probe and
+  post-run audit entry point, preventing dynamically imported Pillow modules
+  from being omitted by the frozen worker analysis.
 
 - First PySide6 desktop application shell with ETS2-inspired charcoal and amber
   styling.

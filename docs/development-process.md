@@ -766,3 +766,20 @@ definition installs it per-user under Local AppData, creates a Start-menu entry
 and optional desktop shortcut, and supports normal Windows uninstall. Generated
 binaries remain ignored local artifacts because the calibrated visual evidence
 is intentionally not stored in the public repository.
+
+## 34. Close the installed-runtime import gap
+
+The first run from the installed 0.1.0 bundle passed its full Steam Cloud
+snapshot and sandbox restore rehearsal, then stopped before sending any input.
+The packaged worker could dispatch the controller but could not import the first
+UI probe because PyInstaller had not discovered Pillow's dynamically reached
+`ImageDraw` and `ImageFont` modules. The run recorded zero of ten actions and
+left the live career untouched.
+
+Version 0.1.1 makes those modules explicit frozen-worker dependencies. More
+importantly, the build now starts every packaged ETS2 UI probe and every post-run
+audit entry point with its no-input `--help` path. This exhaustive gate catches
+missing dynamic imports in the actual frozen runtime, rather than assuming a
+successful source-tree test or worker dispatch proves that every guarded child
+tool can load. The corrected bundle passes the exact Step 1 probe that failed in
+the installed build.

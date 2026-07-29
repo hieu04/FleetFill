@@ -55,6 +55,21 @@ if (-not (Test-Path -LiteralPath $worker -PathType Leaf)) {
 & $worker -m fleetfill.simulated_controller --help
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+$packagedTools = Join-Path $dist "FleetFill\_internal\research\tools"
+$probeScripts = @(
+    Get-ChildItem -LiteralPath $packagedTools -Filter "ets2_ui_*_probe.py" -File
+    Get-Item -LiteralPath (Join-Path $packagedTools "finalize_batch_validation.py")
+    Get-Item -LiteralPath (Join-Path $packagedTools "inspect_company_save.py")
+    Get-Item -LiteralPath (Join-Path $packagedTools "rehearse_main_profile_restore.py")
+    Get-Item -LiteralPath (Join-Path $packagedTools "verify_fill_batch_save.py")
+)
+foreach ($probeScript in $probeScripts) {
+    $probeOutput = & $worker $probeScript.FullName --help 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Packaged worker could not load $($probeScript.Name):`n$($probeOutput -join [Environment]::NewLine)"
+    }
+}
+
 $requiredBundleFiles = @(
     "_internal\runtime\node.exe",
     "_internal\research\tools\save-inspector\decrypt-save.mjs",

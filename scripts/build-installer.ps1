@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $appBuild = Join-Path $PSScriptRoot "build-personal-beta.ps1"
 $installerScript = Join-Path $projectRoot "packaging\FleetFill.iss"
-$installerOutput = Join-Path $projectRoot "packaging\dist\installer\FleetFill-Personal-Beta-Setup-0.1.0.exe"
+$installerOutput = Join-Path $projectRoot "packaging\dist\installer\FleetFill-Personal-Beta-Setup-0.1.1.exe"
 $compilerCandidates = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 7\ISCC.exe"),
     (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
