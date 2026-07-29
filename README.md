@@ -6,12 +6,11 @@ purchase matching trucks, hire available drivers, and assign both to the same
 garage.
 
 The repository contains the proven automation engine, its research tools, and
-the first functional FleetFill desktop shell. Normal app launches cannot start
-live game input. Separate, visibly armed developer launchers cover the
-disposable test career and the certified exact 1+1, 2+2, 3+3, and 5+5 Steam
-Cloud main-profile boundaries. Steam Cloud support also includes proven
-identity, recovery-snapshot, sandbox-restore, and company preflights. The
-Windows installer has not been built.
+the FleetFill desktop app. The fixed-scope personal beta exposes only the
+certified Steam Cloud 5+5 workflow. Separate, visibly armed developer launchers
+retain the disposable test career and exact 1+1, 2+2, 3+3, and 5+5 validation
+boundaries. Steam Cloud support includes proven identity, recovery-snapshot,
+sandbox-restore, company preflights, and post-exit semantic auditing.
 
 For the chronological build story, see
 [`docs/development-process.md`](docs/development-process.md).
@@ -60,9 +59,74 @@ driver totals increasing from 139 to 144, five unique matching trucks, five
 unique Munich-based drivers, and preservation of all 139 pre-existing truck
 configurations and every unrelated garage.
 
+The installed 0.1.2 personal beta has now completed the same fixed 5+5 boundary
+on the Steam Cloud career. It filled the previously empty Ajaccio garage and
+passed both runtime validation and the independent clean-exit save audit. The
+audit verified the exact EUR 1,249,925 deduction, five matching trucks, five
+Ajaccio-based drivers, preservation of all 140 pre-existing trucks, and an
+unchanged active World of Trucks delivery.
+
 This is still a calibrated prototype. It should not be treated as compatible
 with other ETS2 versions, resolutions, UI languages, truck cards, or profiles
 until those combinations have their own recognition evidence and tests.
+
+## Personal beta scope
+
+Version 0.1.2 deliberately freezes the first installable beta to the exact
+environment and path that passed the maximum-capacity certification:
+
+- ETS2 1.60, English, 1920x1080 exclusive fullscreen, 100% Windows scaling
+- one named Steam Cloud career selected from the detected Steam userdata tree
+- first completely empty five-slot garage found by the guarded map workflow
+- saved Scania Streamline Topline fleet configuration card 1
+- five first-available drivers
+- exactly five truck purchases and five hires
+
+Other brands, other truck cards, pagination, alternative hiring policies,
+partial garages, and different display/game configurations remain future work.
+The beta fails closed rather than silently widening this boundary.
+
+The app stores run reports, screenshots, and recovery snapshots under
+`%LOCALAPPDATA%\FleetFill`; an installed copy never writes beside its executable.
+
+Launch the fixed-scope beta from source:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-fleetfill-personal-beta.ps1
+```
+
+Build the portable Windows bundle:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-build.txt
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-personal-beta.ps1
+```
+
+The resulting app is
+`packaging\dist\FleetFill\FleetFill.exe`. The bundle also contains an internal
+console worker and Node runtime because live orchestration intentionally runs
+outside the GUI process and copied binary saves must be decoded locally.
+
+After installing Inno Setup 6 or 7, build the normal per-user installer with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installer.ps1 -SkipAppBuild
+```
+
+Generated bundles and installers are local artifacts and are excluded from Git.
+The calibrated recognition frames required for a personal build are also local,
+ignored evidence; hosted GitHub builds do not currently publish binaries.
+
+### Troubleshooting fullscreen input
+
+FleetFill relies on ETS2 accepting relative mouse input while the game owns the
+exclusive-fullscreen foreground. If a run stops at its first navigation step
+with zero completed actions, first exit ETS2 and restart Windows before changing
+the app or its calibration. During installed-beta validation, a stale desktop or
+Steam input state caused Windows to accept synthetic movement while ETS2 ignored
+it; the unchanged 0.1.2 installer completed a full 5+5 run after a PC restart.
+The run fails closed in this condition, before purchasing a truck or hiring a
+driver.
 
 ## How it works
 

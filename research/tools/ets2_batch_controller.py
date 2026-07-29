@@ -26,6 +26,7 @@ from fleetfill.profile_safety import (
     create_steam_cloud_snapshot,
     rehearse_steam_cloud_restore,
 )
+from fleetfill.runtime import node_executable
 
 
 TRUCK_PRICE_EUR = 248_485
@@ -376,7 +377,7 @@ def inspect_preflight_company(
     decoded = run_dir / "preflight-company-game.txt"
     report = run_dir / "preflight-company.json"
     commands = [
-        (["node", str(inspector / "decrypt-save.mjs"), str(source), str(decoded)], inspector),
+        ([str(node_executable()), str(inspector / "decrypt-save.mjs"), str(source), str(decoded)], inspector),
         ([sys.executable, str(tools_dir / "inspect_company_save.py"), str(decoded), "--output", str(report)], tools_dir),
     ]
     for command, cwd in commands:

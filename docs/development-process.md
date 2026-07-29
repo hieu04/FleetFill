@@ -735,3 +735,92 @@ and every semantic save invariant passed. The distinct maximum-capacity Steam
 Cloud boundary is therefore certified, while count four remains intentionally
 unauthorized because it adds no state shape beyond the already certified 3+3
 boundary.
+
+## 33. Freeze and package the personal beta
+
+After maximum-capacity certification, development stopped expanding automation
+features and froze version 0.1.0 around the one proven product workflow. The
+personal-beta entry point discovers Steam Cloud profiles but fixes the action to
+five Scania Streamline Topline trucks from fleet card one, five first-available
+drivers, and the first completely empty large garage. It cannot request any
+other quantity or fall back to a local profile.
+
+Packaging preserves the architecture exercised during certification. A
+windowed `FleetFill.exe` owns setup, review, history, and process supervision;
+a separate console `FleetFillWorker.exe` dispatches the controller and its
+narrow probes. The one-folder bundle includes the exact private calibration
+frames, the pinned `@trucky/sii-decrypt-ts` module, and a local Node executable,
+so the installed app requires neither Python nor Node on the user's PATH.
+
+Frozen resources are resolved from PyInstaller's read-only bundle root. Mutable
+reports, screenshots, checkpoints, and recovery snapshots move to
+`%LOCALAPPDATA%\FleetFill`, avoiding writes under Program Files or beside a
+portable executable. Build-time gates prove the worker entry point and required
+resources. Additional package smoke tests successfully ran a two-transaction
+simulation, dynamically loaded an ETS2 recognizer, decoded a copied 9.6 MB
+encrypted save to a valid `SiiNunit` document, and rendered the real Windows Qt
+UI with the expected fonts and fixed 5+5 controls.
+
+The portable artifact is assembled with PyInstaller 6.21.0. An Inno Setup
+definition installs it per-user under Local AppData, creates a Start-menu entry
+and optional desktop shortcut, and supports normal Windows uninstall. Generated
+binaries remain ignored local artifacts because the calibrated visual evidence
+is intentionally not stored in the public repository.
+
+## 34. Close the installed-runtime import gap
+
+The first run from the installed 0.1.0 bundle passed its full Steam Cloud
+snapshot and sandbox restore rehearsal, then stopped before sending any input.
+The packaged worker could dispatch the controller but could not import the first
+UI probe because PyInstaller had not discovered Pillow's dynamically reached
+`ImageDraw` and `ImageFont` modules. The run recorded zero of ten actions and
+left the live career untouched.
+
+Version 0.1.1 makes those modules explicit frozen-worker dependencies. More
+importantly, the build now starts every packaged ETS2 UI probe and every post-run
+audit entry point with its no-input `--help` path. This exhaustive gate catches
+missing dynamic imports in the actual frozen runtime, rather than assuming a
+successful source-tree test or worker dispatch proves that every guarded child
+tool can load. The corrected bundle passes the exact Step 1 probe that failed in
+the installed build.
+
+## 35. Prove packaged calibration resources, not only imports
+
+The first installed 0.1.1 live attempt again stopped at Step 1 with zero of ten
+actions. Its full recovery snapshot and restore rehearsal passed, and no Step 1
+output directory was created. The corrected worker could import the probe, but
+the probe then failed while loading its home-screen reference: the initial
+package manifest contained recording frames used by the general recognizers but
+omitted three live navigation references. It also omitted three fleet-mode
+frames that later purchase steps would have reached.
+
+Version 0.1.2 explicitly packages all fourteen calibration images required by
+the frozen 5+5 path. A dedicated no-input packaged entry point now resolves each
+image from the same runtime root used by the probes, opens it with Pillow, and
+fully decodes its pixels. The build cannot produce an installer unless this
+check passes inside `FleetFillWorker`, covering file presence, destination path,
+image integrity, and frozen Pillow decoding together.
+
+## 36. Certify the installed 0.1.2 personal beta
+
+An initial installed 0.1.2 attempt stopped safely at the first navigation step
+with zero of ten actions. Both the installed and source pointer probes showed
+the same symptom: Windows accepted relative input calls, but ETS2 did not move
+or wake its exclusive-fullscreen cursor. The ETS2 executable, calibrated frames,
+profile bindings, and FleetFill package were unchanged. Restarting Windows
+cleared the stale desktop or Steam input state; without rebuilding or modifying
+0.1.2, the next installed run completed all ten guarded transactions.
+
+The installed beta selected the previously empty Ajaccio garage, bought five
+matching Scania Streamline Topline trucks, and assigned five unique drivers.
+The independent clean-exit audit reconciled the exact EUR 1,249,925 spend,
+company truck growth from 140 to 145, driver growth from 139 to 144, and online
+purchase growth from 149 to 154. Every unrelated garage and all 140 pre-existing
+truck configurations remained unchanged. All new trucks have full fuel, zero
+odometer, and the same 37-accessory configuration. The active World of Trucks
+job ID `147800486` and its delivery fingerprint were preserved exactly.
+
+This establishes the normal per-user installer—not only the source and portable
+build—as certified for the frozen personal-beta environment. A zero-action stop
+at initial navigation is now documented as an input-environment fault: exit the
+game and restart Windows before recalibrating or changing FleetFill.

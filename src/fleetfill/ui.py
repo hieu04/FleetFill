@@ -44,6 +44,7 @@ from fleetfill.domain import (
     validate_graduated_live_request,
     validate_live_validation_request,
     validate_main_profile_validation_request,
+    validate_personal_beta_request,
     validate_request,
     simulator_arguments,
 )
@@ -96,6 +97,7 @@ class SetupPage(QWidget):
         self,
         project_root: Path,
         *,
+        personal_beta_enabled: bool = False,
         live_validation_enabled: bool = False,
         graduated_live_enabled: bool = False,
         main_profile_name: str | None = None,
@@ -110,12 +112,17 @@ class SetupPage(QWidget):
                 "Main-profile validation supports only 1+1, 2+2, 3+3, or 5+5"
             )
         self.project_root = project_root
+        self.personal_beta_enabled = personal_beta_enabled
         self.live_validation_enabled = live_validation_enabled
         self.graduated_live_enabled = graduated_live_enabled
         self.main_profile_name = main_profile_name
         self.main_profile_slots = main_profile_slots
+        self.cloud_profile_mode = personal_beta_enabled or bool(main_profile_name)
         self.live_execution_enabled = (
-            live_validation_enabled or graduated_live_enabled or bool(main_profile_name)
+            personal_beta_enabled
+            or live_validation_enabled
+            or graduated_live_enabled
+            or bool(main_profile_name)
         )
         self.run_is_simulation = True
         self.live_run_label = "Live validation"
@@ -150,7 +157,7 @@ class SetupPage(QWidget):
 
         form.addWidget(
             field_label(
-                "Steam Cloud profile" if main_profile_name else "Disposable local profile"
+                "Steam Cloud profile" if self.cloud_profile_mode else "Disposable local profile"
             )
         )
         profile_row = QHBoxLayout()
@@ -159,14 +166,14 @@ class SetupPage(QWidget):
         self.profile_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.profile_combo.currentIndexChanged.connect(self._update_plan)
         self.browse_button = QPushButton("Browse…")
-        self.browse_button.setEnabled(not bool(main_profile_name))
+        self.browse_button.setEnabled(not self.cloud_profile_mode)
         self.browse_button.clicked.connect(self._browse_profile)
         profile_row.addWidget(self.profile_combo, 1)
         profile_row.addWidget(self.browse_button)
         form.addLayout(profile_row)
 
         self.profile_path = label(
-            "No Steam Cloud profile selected" if main_profile_name else "No local profile selected",
+            "No Steam Cloud profile selected" if self.cloud_profile_mode else "No local profile selected",
             "muted",
             word_wrap=True,
         )
@@ -192,8 +199,8 @@ class SetupPage(QWidget):
         self.slots_combo = QComboBox()
         for count in range(1, 6):
             self.slots_combo.addItem(f"{count} slot{'s' if count != 1 else ''}", count)
-        fixed_slot_mode = live_validation_enabled or bool(main_profile_name)
-        fixed_slot_count = main_profile_slots if main_profile_name else 1
+        fixed_slot_mode = personal_beta_enabled or live_validation_enabled or bool(main_profile_name)
+        fixed_slot_count = 5 if personal_beta_enabled else main_profile_slots if main_profile_name else 1
         self.slots_combo.setCurrentIndex(fixed_slot_count - 1 if fixed_slot_mode else 4)
         self.slots_combo.setEnabled(not fixed_slot_mode)
         self.slots_combo.currentIndexChanged.connect(self._update_plan)
@@ -211,7 +218,7 @@ class SetupPage(QWidget):
             label(
                 (
                     "A full cloud recovery snapshot and sandbox restore rehearsal are required before input."
-                    if main_profile_name
+                    if self.cloud_profile_mode
                     else "A timestamped profile backup and dry-run plan are created before the first purchase."
                 ),
                 "muted",
@@ -273,6 +280,9 @@ class SetupPage(QWidget):
         review.addWidget(self.review_button)
         self.integration_note = label(
             (
+                "Personal beta - certified Steam Cloud 5+5 garage fill."
+                if personal_beta_enabled
+                else (
                 "Validation mode — exactly one truck and one driver."
                 if live_validation_enabled
                 else (
@@ -283,6 +293,7 @@ class SetupPage(QWidget):
                         if graduated_live_enabled
                         else "Normal mode — live input remains locked."
                     )
+                )
                 )
             ),
             "muted",
@@ -313,11 +324,11 @@ class SetupPage(QWidget):
     def _load_profiles(self) -> None:
         self.profile_combo.blockSignals(True)
         self.profile_combo.clear()
-        if self.main_profile_name:
+        if self.cloud_profile_mode:
             self.profiles = [
                 profile
                 for profile in discover_steam_cloud_profiles()
-                if profile.name == self.main_profile_name
+                if not self.main_profile_name or profile.name == self.main_profile_name
             ]
         else:
             self.profiles = discover_local_profiles()
@@ -325,13 +336,13 @@ class SetupPage(QWidget):
             self.profile_combo.addItem(profile.name, str(profile.path))
         if not self.profiles:
             self.profile_combo.addItem(
-                "Named Steam Cloud profile not detected"
-                if self.main_profile_name
+                "No Steam Cloud profiles detected"
+                if self.cloud_profile_mode
                 else "No local profiles detected",
                 None,
             )
         else:
-            if self.main_profile_name:
+            if self.cloud_profile_mode:
                 self.profile_combo.setCurrentIndex(0)
             else:
                 disposable_index = next(
@@ -382,7 +393,7 @@ class SetupPage(QWidget):
         else:
             self.profile_path.setText(
                 "No Steam Cloud profile selected"
-                if self.main_profile_name
+                if self.cloud_profile_mode
                 else "No local profile selected"
             )
 
@@ -400,7 +411,7 @@ class SetupPage(QWidget):
             self.profile_check.setObjectName("successText")
             self.profile_check.setText(
                 "●  Steam Cloud recovery surfaces ready"
-                if self.main_profile_name
+                if self.cloud_profile_mode
                 else "●  Disposable profile ready"
             )
         self.profile_check.style().unpolish(self.profile_check)
@@ -492,7 +503,7 @@ class SetupPage(QWidget):
         command = controller_command_preview(
             request,
             self.project_root,
-            steam_cloud_profile=profile if self.main_profile_name else None,
+            steam_cloud_profile=profile if self.cloud_profile_mode else None,
         )
         message = QMessageBox(self)
         message.setWindowTitle("FleetFill safety check passed")
@@ -503,7 +514,11 @@ class SetupPage(QWidget):
         )
         message.setDetailedText(command)
         if self.live_execution_enabled:
-            if self.live_validation_enabled:
+            if self.personal_beta_enabled:
+                live_errors = validate_personal_beta_request(
+                    request, profile, enabled=True
+                )
+            elif self.live_validation_enabled:
                 live_errors = validate_live_validation_request(
                     request, profile, enabled=True
                 )
@@ -525,12 +540,16 @@ class SetupPage(QWidget):
                 )
                 return
             mode_title = (
-                "FleetFill live validation ready"
-                if self.live_validation_enabled
+                "FleetFill personal beta ready"
+                if self.personal_beta_enabled
                 else (
-                    f"FleetFill main-profile {self.main_profile_slots}+{self.main_profile_slots} validation ready"
-                    if self.main_profile_name
-                    else "FleetFill graduated live test ready"
+                    "FleetFill live validation ready"
+                    if self.live_validation_enabled
+                    else (
+                        f"FleetFill main-profile {self.main_profile_slots}+{self.main_profile_slots} validation ready"
+                        if self.main_profile_name
+                        else "FleetFill graduated live test ready"
+                    )
                 )
             )
             message.setWindowTitle(mode_title)
@@ -543,7 +562,7 @@ class SetupPage(QWidget):
                     f"{request.slots} truck(s) and {request.slots} driver(s). A full "
                     "recovery snapshot, sandbox restore "
                     "rehearsal, balance check, and empty-garage check must pass first."
-                    if self.main_profile_name
+                    if self.cloud_profile_mode
                     else (
                         f"Estimated spend: {money(request.total_cost_eur)}\n\n"
                         "This WILL control ETS2 after a 10-second countdown. It is "
@@ -555,6 +574,9 @@ class SetupPage(QWidget):
             )
             run_button = message.addButton(
                 (
+                    "Start 5+5 garage fill"
+                    if self.personal_beta_enabled
+                    else (
                     (
                         f"Start {request.slots}+{request.slots} live validation"
                         if self.main_profile_name
@@ -562,6 +584,7 @@ class SetupPage(QWidget):
                     )
                     if self.live_validation_enabled or self.main_profile_name
                     else f"Start {request.slots}+{request.slots} live test"
+                    )
                 ),
                 QMessageBox.ButtonRole.AcceptRole,
             )
@@ -584,9 +607,9 @@ class SetupPage(QWidget):
 
 
 class HistoryPage(QWidget):
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, data_root: Path) -> None:
         super().__init__()
-        self.history_root = project_root / "research" / "output" / "desktop-runs"
+        self.history_root = data_root / "desktop-runs"
         page = QVBoxLayout(self)
         page.setContentsMargins(32, 28, 32, 30)
         page.setSpacing(20)
@@ -645,7 +668,7 @@ class HistoryPage(QWidget):
 
 
 class SettingsPage(QWidget):
-    def __init__(self, project_root: Path) -> None:
+    def __init__(self, data_root: Path) -> None:
         super().__init__()
         page = QVBoxLayout(self)
         page.setContentsMargins(32, 28, 32, 30)
@@ -674,8 +697,8 @@ class SettingsPage(QWidget):
         page.addWidget(compatibility)
 
         storage, storage_content = card_layout()
-        storage_content.addWidget(label("Local project storage", "sectionTitle"))
-        path = label(str(project_root), "muted", word_wrap=True)
+        storage_content.addWidget(label("Local FleetFill storage", "sectionTitle"))
+        path = label(str(data_root), "muted", word_wrap=True)
         path.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         storage_content.addWidget(path)
         storage_content.addWidget(
@@ -694,6 +717,8 @@ class MainWindow(QMainWindow):
         self,
         project_root: Path,
         *,
+        data_root: Path | None = None,
+        personal_beta_enabled: bool = False,
         live_validation_enabled: bool = False,
         graduated_live_enabled: bool = False,
         main_profile_name: str | None = None,
@@ -708,17 +733,28 @@ class MainWindow(QMainWindow):
                 "Main-profile validation supports only 1+1, 2+2, 3+3, or 5+5"
             )
         enabled_modes = sum(
-            (bool(live_validation_enabled), bool(graduated_live_enabled), bool(main_profile_name))
+            (
+                bool(personal_beta_enabled),
+                bool(live_validation_enabled),
+                bool(graduated_live_enabled),
+                bool(main_profile_name),
+            )
         )
         if enabled_modes > 1:
             raise ValueError("Choose only one FleetFill live development mode")
         self.project_root = project_root
+        self.data_root = data_root or project_root / "research" / "output"
+        self.personal_beta_enabled = personal_beta_enabled
         self.live_validation_enabled = live_validation_enabled
         self.graduated_live_enabled = graduated_live_enabled
         self.main_profile_name = main_profile_name
         self.main_profile_slots = main_profile_slots
+        self.cloud_profile_mode = personal_beta_enabled or bool(main_profile_name)
         self.live_execution_enabled = (
-            live_validation_enabled or graduated_live_enabled or bool(main_profile_name)
+            personal_beta_enabled
+            or live_validation_enabled
+            or graduated_live_enabled
+            or bool(main_profile_name)
         )
         self.supervisor = ControllerProcessSupervisor(self)
         self._active_run_dir: Path | None = None
@@ -753,6 +789,9 @@ class MainWindow(QMainWindow):
         top.addLayout(brand_copy)
         top.addStretch()
         mode = (
+            "Personal beta - 5+5 ready"
+            if personal_beta_enabled
+            else
             "1+1 validation armed"
             if live_validation_enabled
             else (
@@ -781,13 +820,14 @@ class MainWindow(QMainWindow):
         self.stack = QStackedWidget()
         self.setup_page = SetupPage(
             project_root,
+            personal_beta_enabled=personal_beta_enabled,
             live_validation_enabled=live_validation_enabled,
             graduated_live_enabled=graduated_live_enabled,
             main_profile_name=main_profile_name,
             main_profile_slots=main_profile_slots,
         )
-        self.history_page = HistoryPage(project_root)
-        self.settings_page = SettingsPage(project_root)
+        self.history_page = HistoryPage(self.data_root)
+        self.settings_page = SettingsPage(self.data_root)
         self.stack.addWidget(self.setup_page)
         self.stack.addWidget(self.history_page)
         self.stack.addWidget(self.settings_page)
@@ -813,7 +853,9 @@ class MainWindow(QMainWindow):
         self.nav_buttons[0].setChecked(True)
         nav.addStretch()
         nav.addWidget(label(f"FleetFill {__version__}", "muted"))
-        nav.addWidget(label("Development preview", "muted"))
+        nav.addWidget(
+            label("Personal beta" if personal_beta_enabled else "Development preview", "muted")
+        )
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)
@@ -836,7 +878,7 @@ class MainWindow(QMainWindow):
             )
             return
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        run_dir = self.project_root / "research" / "output" / "desktop-runs" / f"{stamp}-simulation"
+        run_dir = self.data_root / "desktop-runs" / f"{stamp}-simulation"
         command = simulator_arguments(request, run_dir)
         self._active_run_dir = run_dir
         self._active_profile_name = profile.name
@@ -858,7 +900,11 @@ class MainWindow(QMainWindow):
     def _start_live_validation(self, request: FillRequest, profile: ProfileInfo) -> None:
         """Start only a separately armed disposable-profile live path."""
 
-        if self.live_validation_enabled:
+        if self.personal_beta_enabled:
+            errors = validate_personal_beta_request(request, profile, enabled=True)
+            run_suffix = "personal-beta"
+            live_label = "Garage fill"
+        elif self.live_validation_enabled:
             errors = validate_live_validation_request(request, profile, enabled=True)
             run_suffix = "live-validation"
             live_label = "Live validation"
@@ -889,18 +935,12 @@ class MainWindow(QMainWindow):
             )
             return
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-        run_dir = (
-            self.project_root
-            / "research"
-            / "output"
-            / "desktop-runs"
-            / f"{stamp}-{run_suffix}"
-        )
+        run_dir = self.data_root / "desktop-runs" / f"{stamp}-{run_suffix}"
         command = controller_arguments(
             request,
             self.project_root,
             run_dir,
-            steam_cloud_profile=profile if self.main_profile_name else None,
+            steam_cloud_profile=profile if self.cloud_profile_mode else None,
         )
         self._active_run_dir = run_dir
         self._active_profile_name = profile.name
@@ -973,6 +1013,8 @@ class MainWindow(QMainWindow):
 def build_window(
     project_root: Path,
     *,
+    data_root: Path | None = None,
+    personal_beta_enabled: bool = False,
     live_validation_enabled: bool = False,
     graduated_live_enabled: bool = False,
     main_profile_name: str | None = None,
@@ -980,6 +1022,8 @@ def build_window(
 ) -> MainWindow:
     return MainWindow(
         project_root,
+        data_root=data_root,
+        personal_beta_enabled=personal_beta_enabled,
         live_validation_enabled=live_validation_enabled,
         graduated_live_enabled=graduated_live_enabled,
         main_profile_name=main_profile_name,

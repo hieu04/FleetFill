@@ -13,10 +13,11 @@ from PySide6.QtWidgets import QApplication
 
 from fleetfill.theme import APP_STYLESHEET
 from fleetfill.ui import build_window
+from fleetfill.runtime import data_root, resource_root
 
 
 def project_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+    return resource_root()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -33,6 +34,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Initial page, primarily for visual QA",
     )
     live_group = parser.add_mutually_exclusive_group()
+    live_group.add_argument(
+        "--personal-beta",
+        action="store_true",
+        help="Run the fixed-scope certified Steam Cloud 5+5 personal beta",
+    )
     live_group.add_argument(
         "--live-validation",
         action="store_true",
@@ -84,6 +90,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     window = build_window(
         project_root(),
+        data_root=data_root(project_root()),
+        personal_beta_enabled=args.personal_beta,
         live_validation_enabled=args.live_validation,
         graduated_live_enabled=args.live_test,
         main_profile_name=main_profile_name,

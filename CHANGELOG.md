@@ -5,7 +5,45 @@ not produced a public release yet.
 
 ## Unreleased
 
+### Fixed
+
+- Verified that a transient stale Windows/Steam input state can prevent ETS2
+  from consuming otherwise accepted relative mouse events. Documented a full
+  Windows restart as the first zero-transaction recovery step; the unchanged
+  0.1.2 installed build subsequently completed and audited a full 5+5 run.
+- Strengthened the Services-hover diagnostic so it verifies that the fly-out
+  actually appeared instead of reporting success after pointer movement alone.
+
+- Packaged all home-menu, Services-flyout, recruitment-map, and fleet-card
+  calibration images used by the live workflow, fixing the installed worker's
+  immediate Step 1 resource failure.
+- Added a no-input frozen-runtime calibration check that opens and fully decodes
+  every required reference image before an installer build can pass.
+- Included the dynamically loaded Pillow drawing and font modules in the frozen
+  worker, fixing an immediate Step 1 failure in the installed personal beta.
+- Added exhaustive packaged-probe import gates so the installer build fails
+  before release if any guarded UI or post-run tool cannot start.
+
 ### Added
+
+- A fixed-scope personal-beta desktop mode that exposes only the certified
+  Steam Cloud 5+5 path and locks the garage, truck card, driver policy, and
+  quantity to the proven configuration.
+- Frozen-runtime path separation: read-only resources stay in the application
+  bundle while run history, recovery snapshots, and evidence are written under
+  `%LOCALAPPDATA%\FleetFill`.
+- A dedicated packaged console worker so the existing guarded controller/probe
+  subprocess architecture remains isolated from the Qt GUI without requiring a
+  user-installed Python runtime.
+- A PyInstaller one-folder build containing the GUI, worker, calibrated local
+  recognition references, pinned save decoder, and local Node runtime.
+- A per-user Inno Setup definition with Start-menu integration, an optional
+  desktop shortcut, normal uninstall support, and no administrator requirement.
+- Packaged smoke gates for worker dispatch, simulation, required resources,
+  recognizer loading, Windows rendering, and copied encrypted-save decoding.
+- Exhaustive no-input import smoke checks for every packaged ETS2 UI probe and
+  post-run audit entry point, preventing dynamically imported Pillow modules
+  from being omitted by the frozen worker analysis.
 
 - First PySide6 desktop application shell with ETS2-inspired charcoal and amber
   styling.

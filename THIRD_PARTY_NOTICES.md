@@ -12,15 +12,22 @@ licenses; the FleetFill license does not replace or modify those terms.
 | [Pillow](https://github.com/python-pillow/Pillow) | Screen capture and image handling | MIT-CMU |
 | [PySide6 / Qt for Python](https://doc.qt.io/qtforpython-6/) | Windows desktop interface | LGPL-3.0-only, GPL alternatives, or a commercial Qt license |
 
-FleetFill intends to use the open-source LGPLv3 option for PySide6/Qt. The
-source repository installs these packages separately and does not vendor their
-source or binaries.
+FleetFill uses the open-source LGPLv3 option for the dynamically linked PySide6
+and Qt libraries. The local personal-beta build bundles those shared libraries
+without modifying them and does not restrict replacing them or reverse
+engineering for debugging such replacements. Build metadata and the license
+files supplied by the exact dependency wheels are copied into the application's
+`licenses` directory where available.
 
-Before FleetFill distributes a packaged executable or installer, its release
-process must preserve all applicable dependency notices and license texts and
-must satisfy Qt's LGPLv3 requirements for the Qt libraries included with the
-application. The licenses shipped inside the exact dependency wheels used for
-that release are authoritative.
+This repository currently documents a locally built personal beta, not a public
+binary release. Before publishing an installer, the release process must also
+ship the complete LGPLv3 and GPLv3 texts, the applicable Qt third-party
+acknowledgements, and a valid corresponding-source offer for the exact Qt build.
+The licenses supplied by the release's dependency wheels remain authoritative.
+
+The packaged worker also contains a private Python runtime and a Node.js runtime
+used only for local copied-save decoding. A public binary release must include
+the exact Python and Node.js distribution notices in the same license payload.
 
 ## Optional research dependencies
 

@@ -16,6 +16,7 @@ from fleetfill.domain import (
     validate_graduated_live_request,
     validate_live_validation_request,
     validate_main_profile_validation_request,
+    validate_personal_beta_request,
 )
 
 
@@ -279,6 +280,24 @@ class FillRequestTests(unittest.TestCase):
                 expected_slots=4,
             )
         self.assertTrue(any("guarded 5+5" in error for error in errors))
+
+    def test_personal_beta_requires_exact_cloud_five_plus_five(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            profile = self.make_cloud_profile(Path(temp))
+            self.assertEqual(
+                validate_personal_beta_request(
+                    FillRequest(profile=profile.path, slots=5),
+                    profile,
+                    enabled=True,
+                ),
+                [],
+            )
+            errors = validate_personal_beta_request(
+                FillRequest(profile=profile.path, slots=3),
+                profile,
+                enabled=True,
+            )
+        self.assertTrue(any("exactly five" in error for error in errors))
 
     def test_cloud_controller_arguments_carry_every_recovery_surface(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

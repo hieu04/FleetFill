@@ -9,6 +9,10 @@ from datetime import datetime
 from pathlib import Path
 
 from ets2_ui_dry_run import capture_direct
+from ets2_ui_open_service_destination_probe import (
+    load_flyout_reference,
+    recognize_services_flyout,
+)
 from ets2_ui_open_services_probe import (
     SERVICES_TARGET,
     load_home_reference,
@@ -32,6 +36,7 @@ def main() -> int:
     args = parser.parse_args()
     output_dir = args.output_dir.resolve()
     reference = load_home_reference()
+    flyout_reference = load_flyout_reference()
     print(
         f"Services-hover probe in {args.delay:.1f} seconds. Return to ETS2. "
         "It moves the pointer only and performs no click."
@@ -46,7 +51,8 @@ def main() -> int:
         return 2
     set_pointer(SERVICES_TARGET)
     time.sleep(args.hover_settle)
-    after_shot, _after_image, after_ms = capture_direct(output_dir)
+    after_shot, after_image, after_ms = capture_direct(output_dir)
+    after = recognize_services_flyout(after_image, flyout_reference)
     report = {
         "gameplay_transactions": 0,
         "keyboard_events": 0,
@@ -62,6 +68,7 @@ def main() -> int:
         "after": {
             "screenshot": str(after_shot),
             "capture_duration_ms": round(after_ms, 2),
+            "analysis": after,
         },
     }
     report_path = output_dir / (
@@ -70,6 +77,9 @@ def main() -> int:
     report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
     print(f"HOVER_SERVICES_REPORT: {report_path}")
+    if not after["safe_to_select_destination"]:
+        print(f"HOVER_SERVICES_FAILED: Services flyout not recognized: {after}")
+        return 3
     print("HOVER_SERVICES_SUCCEEDED: Services hovered with zero clicks")
     return 0
 
