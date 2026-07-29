@@ -9,9 +9,16 @@ from fleetfill.validation import verify_batch_run, verify_one_plus_one_run
 
 
 class BatchValidationTests(unittest.TestCase):
-    def make_run(self, root: Path, *, drivers: int | None = None, count: int = 1) -> Path:
+    def make_run(
+        self,
+        root: Path,
+        *,
+        drivers: int | None = None,
+        count: int = 1,
+        garages: int = 1,
+    ) -> Path:
         if drivers is None:
-            drivers = count
+            drivers = count * garages
         run_dir = root / "run"
         backup = run_dir / "preflight-backup"
         (backup / "autosave").mkdir(parents=True)
@@ -22,13 +29,17 @@ class BatchValidationTests(unittest.TestCase):
                 {
                     "phase": "fill",
                     "count": count,
+                    "garage_count": garages,
                     "dynamic_garage": True,
                     "require_empty_garage": True,
                     "backup": {"backup": str(backup)},
                     "company": {
                         "money_eur": 10_000_000,
-                        "planned_cost_eur": count * 249_985,
-                        "empty_large_garages": ["garage.test"],
+                        "planned_cost_eur": count * garages * 249_985,
+                        "empty_large_garages": [
+                            f"garage.test{index}" for index in range(garages)
+                        ],
+                        "required_empty_garages": garages,
                     },
                 }
             ),
@@ -40,19 +51,42 @@ class BatchValidationTests(unittest.TestCase):
                     "status": "completed",
                     "phase": "fill",
                     "error": None,
-                    "requested_transactions": count * 2,
-                    "completed_transactions": count + drivers,
-                    "transaction_breakdown": {"trucks": count, "drivers": drivers},
-                    "expected_spend_eur": count * 249985,
+                    "requested_transactions": count * garages * 2,
+                    "completed_transactions": count * garages + drivers,
+                    "garage_count": garages,
+                    "completed_garages": garages if drivers == count * garages else 0,
+                    "sub_runs": [
+                        {
+                            "index": index + 1,
+                            "status": "completed",
+                            "home_verified": True,
+                        }
+                        for index in range(garages)
+                    ]
+                    if drivers == count * garages
+                    else [],
+                    "transaction_breakdown": {
+                        "trucks": count * garages,
+                        "drivers": drivers,
+                    },
+                    "expected_spend_eur": count * garages * 249985,
                     "steps": [
                         *[
                             {"return_code": 0, "script": "ets2_ui_confirm_truck_purchase_probe.py"}
-                            for _ in range(count)
+                            for _ in range(count * garages)
                         ],
                         *[
                             {"return_code": 0, "script": "ets2_ui_confirm_driver_to_truck_probe.py"}
                             for _ in range(drivers)
                         ],
+                        *(
+                            [
+                                {"return_code": 0, "script": "ets2_ui_return_home_probe.py"}
+                                for _ in range(garages * 2)
+                            ]
+                            if drivers == count * garages
+                            else []
+                        ),
                     ],
                 }
             ),
@@ -90,6 +124,15 @@ class BatchValidationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp:
             evidence = verify_batch_run(
                 self.make_run(Path(temp), count=3), expected_count=3
+            )
+            self.assertTrue(evidence.passed)
+
+    def test_accepts_complete_multi_garage_runtime_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            evidence = verify_batch_run(
+                self.make_run(Path(temp), count=5, garages=3),
+                expected_count=5,
+                expected_garages=3,
             )
             self.assertTrue(evidence.passed)
 

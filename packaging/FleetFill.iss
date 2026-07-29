@@ -1,7 +1,10 @@
 #define AppName "FleetFill"
-#define AppVersion "0.1.4"
+#define AppVersion "0.2.0"
 #define AppPublisher "FleetFill contributors"
 #define AppExeName "FleetFill.exe"
+#ifndef AppSourceDir
+  #define AppSourceDir "dist\FleetFill"
+#endif
 
 [Setup]
 AppId={{C635C1C4-F4C9-41A2-B8E3-C0E5751529AE}
@@ -36,7 +39,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
-Source: "dist\FleetFill\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#AppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; AppUserModelID: "FleetFill.Desktop"

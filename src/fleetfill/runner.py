@@ -166,6 +166,8 @@ class RunHistoryRecord:
     save_audit_report: str | None = None
     save_audit_error: str | None = None
     target_garage: str | None = None
+    garages: int = 1
+    target_garages: tuple[str, ...] = ()
 
     @classmethod
     def from_run(
@@ -175,6 +177,7 @@ class RunHistoryRecord:
         run_id: str,
         profile_name: str,
         slots: int,
+        garages: int = 1,
         simulated: bool,
         validation_passed: bool | None = None,
         validation_report: Path | None = None,
@@ -184,6 +187,7 @@ class RunHistoryRecord:
             created_at=datetime.now().isoformat(timespec="seconds"),
             profile_name=profile_name,
             slots=slots,
+            garages=garages,
             simulated=simulated,
             state=run.state.value,
             completed_transactions=run.completed_transactions,
@@ -212,6 +216,7 @@ def read_history_records(root: Path) -> list[RunHistoryRecord]:
     for path in root.glob("*/desktop-run.json"):
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
+            payload["target_garages"] = tuple(payload.get("target_garages", ()))
             records.append(RunHistoryRecord(**payload))
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             continue
@@ -222,6 +227,7 @@ def read_history_record(path: Path) -> RunHistoryRecord:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError("Run history must contain a JSON object")
+    payload["target_garages"] = tuple(payload.get("target_garages", ()))
     return RunHistoryRecord(**payload)
 
 

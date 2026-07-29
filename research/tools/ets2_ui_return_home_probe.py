@@ -9,7 +9,8 @@ from datetime import datetime
 from pathlib import Path
 
 from ets2_truck_ui_dry_run import load_truck_references, recognize as recognize_truck
-from ets2_ui_dry_run import capture_direct
+from ets2_ui_dry_run import analyze as recognize_recruitment
+from ets2_ui_dry_run import capture_direct, load_references as load_recruitment_references
 from ets2_ui_open_services_probe import load_home_reference, recognize_home
 from ets2_ui_pointer_probe import SAFE_POINTER, set_pointer
 from ets2_ui_select_probe import click_left_once
@@ -17,6 +18,25 @@ from ets2_ui_select_probe import click_left_once
 
 HOME_TARGET = (201, 34)
 ALLOWED_TRUCK_STATES = {"dealer_map", "truck_purchase"}
+
+
+def recognize_supported_source(image) -> dict:
+    """Recognize only workflow screens whose Home control is calibrated."""
+
+    recruitment = recognize_recruitment(image, load_recruitment_references())
+    if recruitment.get("state") == "recruitment_agency" and recruitment.get(
+        "safe_to_act"
+    ):
+        return {**recruitment, "workflow": "recruitment"}
+    truck = recognize_truck(image, load_truck_references())
+    if truck.get("state") in ALLOWED_TRUCK_STATES and truck.get("safe_to_act"):
+        return {**truck, "workflow": "truck"}
+    return {
+        "state": "unknown",
+        "safe_to_act": False,
+        "recruitment_analysis": recruitment,
+        "truck_analysis": truck,
+    }
 
 
 def main() -> int:
@@ -35,12 +55,12 @@ def main() -> int:
     output_dir = args.output_dir.resolve()
     print(
         f"Return-home probe in {args.delay:.1f} seconds. Return to ETS2. "
-        "It clicks the top Home icon only from a recognized truck screen."
+        "It clicks the top Home icon only from a recognized workflow screen."
     )
     time.sleep(args.delay)
     before_shot, before_image, before_ms = capture_direct(output_dir)
-    before = recognize_truck(before_image, load_truck_references())
-    if before.get("state") not in ALLOWED_TRUCK_STATES or not before.get("safe_to_act"):
+    before = recognize_supported_source(before_image)
+    if not before.get("safe_to_act"):
         print(f"RETURN_HOME_ABORTED: unsupported starting screen: {before}")
         return 2
     set_pointer(HOME_TARGET)

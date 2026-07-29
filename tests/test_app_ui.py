@@ -86,12 +86,22 @@ class MainWindowTests(unittest.TestCase):
         self.assertEqual(page.review_values["drivers"].text(), "5")
         self.assertEqual(page.total_value.text(), "€1,249,925")
 
+    def test_garage_queue_selector_updates_the_aggregate_plan(self) -> None:
+        page = self.window.setup_page
+        page.garages_combo.setCurrentIndex(2)
+        self.assertEqual(page.current_request().garages, 3)
+        self.assertEqual(page.review_values["garage_count"].text(), "3")
+        self.assertEqual(page.review_values["trucks"].text(), "15 identical")
+        self.assertEqual(page.review_values["drivers"].text(), "15")
+        self.assertEqual(page.total_value.text(), money(3_749_775))
+
     def test_validation_mode_is_visibly_armed_and_forces_one_slot(self) -> None:
         window = MainWindow(Path.cwd(), live_validation_enabled=True)
         try:
             page = window.setup_page
             self.assertEqual(page.slots_combo.currentData(), 1)
             self.assertFalse(page.slots_combo.isEnabled())
+            self.assertFalse(page.garages_combo.isEnabled())
             self.assertIn("Validation mode", page.integration_note.text())
             self.assertEqual(page.total_value.text(), "€249,985")
         finally:
@@ -123,6 +133,7 @@ class MainWindowTests(unittest.TestCase):
             page = window.setup_page
             self.assertEqual(page.slots_combo.currentData(), 1)
             self.assertFalse(page.slots_combo.isEnabled())
+            self.assertFalse(page.garages_combo.isEnabled())
             self.assertFalse(page.browse_button.isEnabled())
             self.assertIn("Main-profile validation", page.integration_note.text())
             self.assertEqual(page.current_profile_info(), profile)
@@ -219,6 +230,7 @@ class MainWindowTests(unittest.TestCase):
             page = window.setup_page
             self.assertEqual(page.slots_combo.currentData(), 5)
             self.assertFalse(page.slots_combo.isEnabled())
+            self.assertTrue(page.garages_combo.isEnabled())
             self.assertFalse(page.browse_button.isEnabled())
             self.assertIn("Personal beta", page.integration_note.text())
             self.assertEqual(page.current_profile_info(), profile)

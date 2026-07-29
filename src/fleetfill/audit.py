@@ -61,7 +61,7 @@ class SaveAuditProcessSupervisor(QObject):
         self._finishing = False
         self.status_changed.emit(
             "Waiting for ETS2 to exit",
-            "The garage fill passed its runtime checks. Exit ETS2 cleanly; FleetFill will verify the saved result automatically.",
+            "The complete garage queue passed its runtime checks. Exit ETS2 cleanly; FleetFill will audit every filled garage automatically.",
             False,
         )
         self.poller.start()
@@ -111,9 +111,12 @@ class SaveAuditProcessSupervisor(QObject):
             self._fail(run_dir, f"Could not read the completed save audit: {error}")
             return
         if exit_code == 0 and record.save_audit_passed is True:
-            garage = record.target_garage or "the filled garage"
-            message = f"Save audit passed. FleetFill verified {garage}."
-            self.status_changed.emit("Garage fill verified", message, True)
+            garage_count = len(record.target_garages) or record.garages
+            message = (
+                f"Save audit passed. FleetFill verified all {garage_count} "
+                f"garage{'s' if garage_count != 1 else ''}."
+            )
+            self.status_changed.emit("Garage queue verified", message, True)
             self.run_dir = None
             self.audit_finished.emit(run_dir, True, message)
             return
