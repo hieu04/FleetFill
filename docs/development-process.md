@@ -880,3 +880,32 @@ garage, all 145 pre-existing vehicle configurations, and World of Trucks job
 This run certifies both halves of the 0.1.3 product workflow: installed UI
 automation and automatic authoritative-save verification. Manual post-exit
 commands are no longer part of the personal-beta user procedure.
+
+## 39. Freeze a polished 0.1.4 release candidate
+
+The certified 0.1.3 behavior became the checkpoint for a presentation-only
+pass. No new truck brands, configurations, driver policies, or controller paths
+were introduced. The first stable candidate therefore keeps the proven Scania
+Streamline Topline, first-available driver, automatic empty-garage, and five-slot
+scope intact.
+
+FleetFill now has one reproducible visual identity: a charcoal garage and
+rightward fill arrow on an amber rounded tile. A deterministic Pillow script
+produces the 512-pixel transparent PNG and a multi-resolution Windows ICO. The
+same identity is applied to the Qt window, PyInstaller executables, taskbar
+grouping, Start-menu and desktop shortcuts, and Inno Setup package.
+
+The UI retains the established charcoal-and-amber language but uses a clearer
+type hierarchy, slightly roomier release dimensions, and more consistent cards
+and controls. The former default Windows caption has been replaced with a slim
+integrated header. Native hit testing retains edge resizing, caption dragging,
+double-click maximize, and the Windows 11 snap-layout surface over the custom
+maximize control. History no longer presents the latest record as one undifferentiated
+text block: outcome, profile metadata, guarded actions, runtime evidence, save
+audit, verified garage, and selectable recovery evidence have distinct regions.
+Programmatic navigation after the save audit now also updates the selected
+sidebar button, fixing the prior Setup-highlighted/History-visible mismatch.
+
+The desktop suite gained seven brand, Windows identity, chrome, navigation, and summary
+regressions. Together with the unchanged controller/save-audit suite, the offline
+release gate now contains 197 passing tests before packaging.

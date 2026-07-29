@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
 import sys
 from pathlib import Path
@@ -14,6 +15,20 @@ from PySide6.QtWidgets import QApplication
 from fleetfill.theme import APP_STYLESHEET
 from fleetfill.ui import build_window
 from fleetfill.runtime import data_root, resource_root
+
+
+WINDOWS_APP_ID = "FleetFill.Desktop"
+
+
+def configure_windows_identity() -> None:
+    """Give Windows one stable identity for taskbar and shortcut grouping."""
+
+    if sys.platform != "win32":
+        return
+    try:
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(WINDOWS_APP_ID)
+    except (AttributeError, OSError):
+        pass
 
 
 def project_root() -> Path:
@@ -77,11 +92,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.screenshot and "QT_QPA_PLATFORM" not in os.environ:
         os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+    configure_windows_identity()
     app = QApplication(sys.argv[:1])
     app.setApplicationName("FleetFill")
+    app.setApplicationDisplayName("FleetFill")
     app.setOrganizationName("FleetFill")
     app.setStyle("Fusion")
     app.setStyleSheet(APP_STYLESHEET)
+    app.setWindowIcon(QIcon(str(resource_root() / "assets" / "fleetfill-app.png")))
     main_profile_name = (
         args.main_profile_five_validation
         or args.main_profile_three_validation
@@ -106,8 +124,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     page_index = {"setup": 0, "history": 1, "settings": 2}[args.page]
-    window.stack.setCurrentIndex(page_index)
-    window.nav_buttons[page_index].setChecked(True)
+    window._show_page(page_index)
     window.show()
 
     if args.screenshot:

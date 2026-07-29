@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import unittest
 
-from fleetfill.application import build_parser
+from fleetfill.application import WINDOWS_APP_ID, build_parser, configure_windows_identity
 
 
 class ApplicationArgumentsTests(unittest.TestCase):
+    def test_windows_identity_is_stable_and_safe_off_windows(self) -> None:
+        self.assertEqual(WINDOWS_APP_ID, "FleetFill.Desktop")
+        configure_windows_identity()
+
     def test_normal_mode_does_not_arm_live_validation(self) -> None:
         self.assertFalse(build_parser().parse_args([]).live_validation)
 

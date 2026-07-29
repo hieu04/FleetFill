@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import ctypes
+from ctypes import wintypes
 from datetime import datetime
 import json
 from pathlib import Path
+import sys
 
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtCore import QEvent, QPoint, Qt, QTimer, Signal
+from PySide6.QtGui import QFont, QIcon, QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup,
     QComboBox,
@@ -636,22 +639,69 @@ class HistoryPage(QWidget):
         super().__init__()
         self.history_root = data_root / "desktop-runs"
         page = QVBoxLayout(self)
-        page.setContentsMargins(32, 28, 32, 30)
-        page.setSpacing(20)
+        page.setContentsMargins(38, 32, 38, 34)
+        page.setSpacing(22)
         page.addWidget(label("History", "pageTitle"))
-        page.addWidget(label("FleetFill app runs and their recovery records will appear here.", "muted"))
-        empty_card, content = card_layout()
+        page.addWidget(
+            label("FleetFill app runs and their recovery records will appear here.", "muted")
+        )
+
+        history_card, content = card_layout()
+        content.setContentsMargins(24, 22, 24, 22)
+        content.setSpacing(18)
+
+        heading = QHBoxLayout()
+        heading.setSpacing(12)
+        self.history_mark = label("", "verifiedMark")
+        self.history_mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.history_mark.setFixedSize(32, 32)
+        heading.addWidget(self.history_mark)
+        heading_copy = QVBoxLayout()
+        heading_copy.setSpacing(3)
         self.history_title = label("No desktop-app runs yet", "sectionTitle")
+        self.history_meta = label("", "historyMeta")
+        heading_copy.addWidget(self.history_title)
+        heading_copy.addWidget(self.history_meta)
+        heading.addLayout(heading_copy, 1)
+        content.addLayout(heading)
+
+        self.metrics = QFrame()
+        metrics = QGridLayout(self.metrics)
+        metrics.setContentsMargins(0, 3, 0, 3)
+        metrics.setHorizontalSpacing(34)
+        metrics.setVerticalSpacing(7)
+        self.metric_values: dict[str, QLabel] = {}
+        metric_definitions = (
+            ("actions", "GUARDED ACTIONS"),
+            ("runtime", "RUNTIME EVIDENCE"),
+            ("audit", "SAVE AUDIT"),
+            ("garage", "VERIFIED GARAGE"),
+        )
+        for column, (key, title) in enumerate(metric_definitions):
+            metrics.addWidget(label(title, "metricLabel"), 0, column)
+            value = label("—", "metricValue")
+            metrics.addWidget(value, 1, column)
+            self.metric_values[key] = value
+        content.addWidget(self.metrics)
+
+        self.evidence_title = label("Evidence and recovery", "evidenceTitle")
         self.history_details = label("", "muted", word_wrap=True)
-        content.addWidget(self.history_title)
+        self.history_details.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+        content.addWidget(self.evidence_title)
         content.addWidget(self.history_details)
         content.addStretch()
-        page.addWidget(empty_card, 1)
+        page.addWidget(history_card, 1)
         self.refresh()
 
     def refresh(self) -> None:
         records = read_history_records(self.history_root)
         if not records:
+            self.history_mark.hide()
+            self.history_meta.hide()
+            self.metrics.hide()
+            self.evidence_title.hide()
             self.history_title.setText("No desktop-app runs yet")
             self.history_details.setText(
                 "The verified Stuttgart 5+5 run belongs to controller research. "
@@ -659,6 +709,11 @@ class HistoryPage(QWidget):
                 "and backup location here."
             )
             return
+
+        self.history_mark.show()
+        self.history_meta.show()
+        self.metrics.show()
+        self.evidence_title.show()
         latest = records[0]
         kind = "Simulation" if latest.simulated else "Live run"
         if not latest.simulated and latest.save_audit_passed is True:
@@ -672,36 +727,60 @@ class HistoryPage(QWidget):
         else:
             outcome = latest.state.replace("_", " ").title()
         self.history_title.setText(f"{kind}: {outcome}")
-        details = (
-            f"{latest.created_at}  •  {latest.profile_name}  •  {latest.slots} slot(s)\n"
-            f"Completed {latest.completed_transactions} of "
-            f"{latest.requested_transactions} guarded actions."
+        self.history_meta.setText(
+            f"{latest.created_at}  •  {latest.profile_name}  •  {latest.slots} slot(s)"
         )
-        if latest.error:
-            details += f"\nReason: {latest.error}"
-        if latest.report_path:
-            details += f"\nReport: {latest.report_path}"
-        if latest.backup_path:
-            details += f"\nBackup: {latest.backup_path}"
-        if latest.validation_passed is True:
-            details += "\nRuntime evidence: Passed."
-        elif latest.validation_passed is False:
-            details += "\nRuntime evidence: Failed. Do not continue to larger batches."
-        if latest.validation_report:
-            details += f"\nValidation: {latest.validation_report}"
+
         if latest.save_audit_passed is True:
-            details += "\nSave audit: Passed."
-        elif latest.save_audit_passed is False:
-            details += "\nSave audit: Failed. Do not continue to larger batches."
-        elif latest.validation_passed is True:
-            details += "\nSave audit: Waiting for ETS2 to exit."
+            mark_style, mark_text = "verifiedMark", "✓"
+        elif latest.validation_passed is True and latest.save_audit_passed is None:
+            mark_style, mark_text = "waitingMark", "…"
+        elif latest.state == RunnerState.SUCCEEDED.value:
+            mark_style, mark_text = "verifiedMark", "✓"
+        else:
+            mark_style, mark_text = "failedMark", "!"
+        self.history_mark.setObjectName(mark_style)
+        self.history_mark.setText(mark_text)
+        self.history_mark.style().unpolish(self.history_mark)
+        self.history_mark.style().polish(self.history_mark)
+
+        self.metric_values["actions"].setText(
+            f"{latest.completed_transactions} / {latest.requested_transactions}"
+        )
+        self.metric_values["runtime"].setText(
+            "Passed"
+            if latest.validation_passed is True
+            else "Failed"
+            if latest.validation_passed is False
+            else "Not required"
+        )
+        self.metric_values["audit"].setText(
+            "Passed"
+            if latest.save_audit_passed is True
+            else "Failed"
+            if latest.save_audit_passed is False
+            else "Waiting for exit"
+            if latest.validation_passed is True
+            else "Not required"
+        )
+        self.metric_values["garage"].setText(latest.target_garage or "—")
+
+        detail_lines = []
+        if latest.error:
+            detail_lines.append(f"Reason: {latest.error}")
+        if latest.report_path:
+            detail_lines.append(f"Run report: {latest.report_path}")
+        if latest.backup_path:
+            detail_lines.append(f"Recovery snapshot: {latest.backup_path}")
+        if latest.validation_report:
+            detail_lines.append(f"Runtime validation: {latest.validation_report}")
         if latest.save_audit_error:
-            details += f"\nSave audit reason: {latest.save_audit_error}"
+            detail_lines.append(f"Save audit reason: {latest.save_audit_error}")
         if latest.save_audit_report:
-            details += f"\nSave audit report: {latest.save_audit_report}"
-        if latest.target_garage:
-            details += f"\nVerified garage: {latest.target_garage}"
-        self.history_details.setText(details)
+            detail_lines.append(f"Save audit report: {latest.save_audit_report}")
+        self.history_details.setText(
+            "\n".join(detail_lines) or "No supporting files were recorded."
+        )
 
 
 class SettingsPage(QWidget):
@@ -799,9 +878,13 @@ class MainWindow(QMainWindow):
         self._active_profile_name = ""
         self._active_slots = 0
         self._active_simulated = True
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint, True)
         self.setWindowTitle("FleetFill")
-        self.setMinimumSize(1040, 680)
-        self.resize(1180, 760)
+        self.setMinimumSize(1080, 720)
+        self.resize(1240, 800)
+        icon_path = project_root / "assets" / "fleetfill-app.png"
+        if icon_path.is_file():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         root = QWidget()
         root.setObjectName("appRoot")
@@ -810,15 +893,26 @@ class MainWindow(QMainWindow):
         shell.setContentsMargins(0, 0, 0, 0)
         shell.setSpacing(0)
 
-        top_bar = QFrame()
-        top_bar.setObjectName("topBar")
-        top_bar.setFixedHeight(76)
-        top = QHBoxLayout(top_bar)
-        top.setContentsMargins(24, 14, 24, 14)
+        self.title_bar = QFrame()
+        self.title_bar.setObjectName("topBar")
+        self.title_bar.setFixedHeight(72)
+        top = QHBoxLayout(self.title_bar)
+        top.setContentsMargins(24, 10, 10, 10)
         top.setSpacing(12)
-        brand_mark = label("FF", "brandMark")
+        brand_mark = label("", "brandMark")
         brand_mark.setAlignment(Qt.AlignmentFlag.AlignCenter)
         brand_mark.setFixedSize(44, 44)
+        if icon_path.is_file():
+            brand_mark.setPixmap(
+                QPixmap(str(icon_path)).scaled(
+                    44,
+                    44,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+        else:
+            brand_mark.setText("FF")
         top.addWidget(brand_mark)
         brand_copy = QVBoxLayout()
         brand_copy.setSpacing(0)
@@ -839,7 +933,26 @@ class MainWindow(QMainWindow):
             )
         )
         top.addWidget(label(f"●  {mode}  •  ETS2 1.60", "statusPill"))
-        shell.addWidget(top_bar)
+        top.addSpacing(4)
+        self.minimize_button = QPushButton("—")
+        self.minimize_button.setObjectName("windowButton")
+        self.minimize_button.setAccessibleName("Minimize")
+        self.minimize_button.setFixedSize(44, 36)
+        self.minimize_button.clicked.connect(self.showMinimized)
+        top.addWidget(self.minimize_button)
+        self.maximize_button = QPushButton("□")
+        self.maximize_button.setObjectName("windowButton")
+        self.maximize_button.setAccessibleName("Maximize")
+        self.maximize_button.setFixedSize(44, 36)
+        self.maximize_button.clicked.connect(self._toggle_maximized)
+        top.addWidget(self.maximize_button)
+        self.close_button = QPushButton("×")
+        self.close_button.setObjectName("closeButton")
+        self.close_button.setAccessibleName("Close")
+        self.close_button.setFixedSize(44, 36)
+        self.close_button.clicked.connect(self.close)
+        top.addWidget(self.close_button)
+        shell.addWidget(self.title_bar)
 
         body = QHBoxLayout()
         body.setContentsMargins(0, 0, 0, 0)
@@ -899,10 +1012,103 @@ class MainWindow(QMainWindow):
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)
+        self._configure_native_window()
         if self.live_execution_enabled:
             self._resume_pending_save_audit()
 
+    def _configure_native_window(self) -> None:
+        """Apply the Windows 11 dark, rounded frame hints to custom chrome."""
+
+        if sys.platform != "win32":
+            return
+        try:
+            hwnd = int(self.winId())
+            enabled = ctypes.c_int(1)
+            rounded = ctypes.c_int(2)
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 20, ctypes.byref(enabled), ctypes.sizeof(enabled)
+            )
+            ctypes.windll.dwmapi.DwmSetWindowAttribute(
+                hwnd, 33, ctypes.byref(rounded), ctypes.sizeof(rounded)
+            )
+        except (AttributeError, OSError, ValueError):
+            pass
+
+    def _toggle_maximized(self) -> None:
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
+    def changeEvent(self, event: QEvent) -> None:  # noqa: N802 - Qt API
+        if event.type() == QEvent.Type.WindowStateChange:
+            self.maximize_button.setText("❐" if self.isMaximized() else "□")
+            self.maximize_button.setAccessibleName(
+                "Restore" if self.isMaximized() else "Maximize"
+            )
+        super().changeEvent(event)
+
+    def nativeEvent(self, event_type, message):  # noqa: N802 - Qt API
+        """Preserve native resize, caption dragging, and Windows snap layouts."""
+
+        if sys.platform != "win32" or event_type not in {
+            b"windows_generic_MSG",
+            b"windows_dispatcher_MSG",
+        }:
+            return super().nativeEvent(event_type, message)
+        try:
+            native_message = wintypes.MSG.from_address(int(message))
+        except (TypeError, ValueError):
+            return super().nativeEvent(event_type, message)
+        if native_message.message != 0x0084:  # WM_NCHITTEST
+            return super().nativeEvent(event_type, message)
+
+        x = ctypes.c_short(native_message.lParam & 0xFFFF).value
+        y = ctypes.c_short((native_message.lParam >> 16) & 0xFFFF).value
+        return True, self._native_hit_test(QPoint(x, y))
+
+    def _native_hit_test(self, global_point: QPoint) -> int:
+        """Return the Win32 hit code for one global pointer position."""
+
+        point = self.mapFromGlobal(global_point)
+        border = 7
+
+        if not self.isMaximized():
+            left = point.x() < border
+            right = point.x() >= self.width() - border
+            top = point.y() < border
+            bottom = point.y() >= self.height() - border
+            if top and left:
+                return 13  # HTTOPLEFT
+            if top and right:
+                return 14  # HTTOPRIGHT
+            if bottom and left:
+                return 16  # HTBOTTOMLEFT
+            if bottom and right:
+                return 17  # HTBOTTOMRIGHT
+            if left:
+                return 10  # HTLEFT
+            if right:
+                return 11  # HTRIGHT
+            if top:
+                return 12  # HTTOP
+            if bottom:
+                return 15  # HTBOTTOM
+
+        if point.y() < self.title_bar.height():
+            if self.maximize_button.rect().contains(
+                self.maximize_button.mapFromGlobal(global_point)
+            ):
+                return 9  # HTMAXBUTTON enables the Windows 11 snap flyout.
+            for button in (self.minimize_button, self.close_button):
+                if button.rect().contains(button.mapFromGlobal(global_point)):
+                    return 1  # HTCLIENT lets Qt own these button clicks.
+            return 2  # HTCAPTION preserves drag and double-click maximize.
+        return 1
+
     def _show_page(self, page: int) -> None:
+        if 0 <= page < len(self.nav_buttons):
+            self.nav_buttons[page].setChecked(True)
         if page == 1:
             self.history_page.refresh()
         self.stack.setCurrentIndex(page)
