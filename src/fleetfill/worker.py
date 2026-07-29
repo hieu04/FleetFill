@@ -14,6 +14,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageGrab  # noqa: F401
 import fleetfill.domain  # noqa: F401
 import fleetfill.preflight  # noqa: F401
 import fleetfill.profile_safety  # noqa: F401
+import fleetfill.runtime  # noqa: F401
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -164,6 +164,7 @@ class RunHistoryRecord:
     validation_report: str | None = None
     save_audit_passed: bool | None = None
     save_audit_report: str | None = None
+    save_audit_error: str | None = None
     target_garage: str | None = None
 
     @classmethod
@@ -215,3 +216,50 @@ def read_history_records(root: Path) -> list[RunHistoryRecord]:
         except (OSError, ValueError, TypeError, json.JSONDecodeError):
             continue
     return sorted(records, key=lambda item: item.created_at, reverse=True)
+
+
+def read_history_record(path: Path) -> RunHistoryRecord:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("Run history must contain a JSON object")
+    return RunHistoryRecord(**payload)
+
+
+def is_pending_save_audit(record: RunHistoryRecord) -> bool:
+    """Return whether a completed live run still needs its post-exit audit."""
+
+    return (
+        not record.simulated
+        and record.state == RunnerState.SUCCEEDED.value
+        and record.validation_passed is True
+        and record.save_audit_passed is None
+    )
+
+
+def find_latest_pending_save_audit(root: Path) -> Path | None:
+    """Find the newest resumable audit without depending on directory names."""
+
+    candidates: list[tuple[str, Path]] = []
+    if not root.is_dir():
+        return None
+    for path in root.glob("*/desktop-run.json"):
+        try:
+            record = read_history_record(path)
+        except (OSError, ValueError, TypeError, json.JSONDecodeError):
+            continue
+        if is_pending_save_audit(record):
+            candidates.append((record.created_at, path.parent))
+    return max(candidates, default=("", None), key=lambda item: item[0])[1]
+
+
+def record_save_audit_failure(run_dir: Path, error: str) -> Path:
+    """Make an automatic-audit infrastructure failure durable in History."""
+
+    path = run_dir / "desktop-run.json"
+    record = read_history_record(path)
+    payload = {
+        **record.__dict__,
+        "save_audit_passed": False,
+        "save_audit_error": error,
+    }
+    return write_history_record(RunHistoryRecord(**payload), run_dir)

@@ -222,6 +222,24 @@ class MainWindowTests(unittest.TestCase):
         self.assertTrue(page.cancel_button.isHidden())
         self.assertTrue(page.status_hide_timer.isActive())
 
+    def test_setup_shows_non_cancellable_save_audit_status(self) -> None:
+        page = self.window.setup_page
+        page.show_audit_status(
+            "Waiting for ETS2 to exit",
+            "Exit the game cleanly.",
+            False,
+        )
+        self.assertEqual(page.run_status_title.text(), "Waiting for ETS2 to exit")
+        self.assertTrue(page.cancel_button.isHidden())
+        self.assertFalse(page.status_hide_timer.isActive())
+
+    def test_profile_refresh_cannot_bypass_execution_lock(self) -> None:
+        page = self.window.setup_page
+        page.set_execution_locked(True)
+        page._update_plan()
+        self.assertFalse(page.review_button.isEnabled())
+        page.set_execution_locked(False)
+
     def test_history_page_loads_durable_simulation_result(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -248,6 +266,50 @@ class MainWindowTests(unittest.TestCase):
                     "Test profile", window.history_page.history_details.text()
                 )
             finally:
+                window.close()
+
+    def test_personal_beta_resumes_latest_pending_save_audit(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            data_root = Path(temp) / "FleetFill"
+            run_dir = data_root / "desktop-runs" / "pending-run"
+            profile = ProfileInfo(
+                "Primary Career",
+                Path("cloud-profile"),
+                storage=STEAM_CLOUD_PROFILE_STORAGE,
+                documents_root=Path("documents"),
+                companion_path=Path("companion"),
+                steam_metadata_path=Path("remotecache.vdf"),
+            )
+            run = SupervisedRun(requested_transactions=10)
+            run.accept_output_line("BATCH_SUCCEEDED: complete")
+            write_history_record(
+                RunHistoryRecord.from_run(
+                    run,
+                    run_id="pending-run",
+                    profile_name="Primary Career",
+                    slots=5,
+                    simulated=False,
+                    validation_passed=True,
+                    validation_report=run_dir / "validation-report.json",
+                ),
+                run_dir,
+            )
+            with (
+                patch("fleetfill.ui.discover_steam_cloud_profiles", return_value=[profile]),
+                patch("fleetfill.audit.is_ets2_running", return_value=True),
+            ):
+                window = MainWindow(
+                    Path.cwd(), data_root=data_root, personal_beta_enabled=True
+                )
+            try:
+                self.assertTrue(window.audit_supervisor.active)
+                self.assertFalse(window.setup_page.review_button.isEnabled())
+                self.assertEqual(
+                    window.history_page.history_title.text(),
+                    "Live run: Awaiting save audit",
+                )
+            finally:
+                window.audit_supervisor.poller.stop()
                 window.close()
 
 

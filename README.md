@@ -66,13 +66,20 @@ audit verified the exact EUR 1,249,925 deduction, five matching trucks, five
 Ajaccio-based drivers, preservation of all 140 pre-existing trucks, and an
 unchanged active World of Trucks delivery.
 
+The installed 0.1.3 beta subsequently completed another full 5+5 run and
+performed its clean-exit save audit automatically. It filled all five slots of
+the previously empty Olbia garage, reconciled the exact EUR 1,249,925 spend,
+advanced company trucks from 145 to 150 and drivers from 144 to 149, preserved
+all 145 existing truck configurations and the active World of Trucks delivery,
+then promoted History to `Live run: Verified` without a developer command.
+
 This is still a calibrated prototype. It should not be treated as compatible
 with other ETS2 versions, resolutions, UI languages, truck cards, or profiles
 until those combinations have their own recognition evidence and tests.
 
 ## Personal beta scope
 
-Version 0.1.2 deliberately freezes the first installable beta to the exact
+Version 0.1.3 deliberately freezes the installable beta to the exact
 environment and path that passed the maximum-capacity certification:
 
 - ETS2 1.60, English, 1920x1080 exclusive fullscreen, 100% Windows scaling
@@ -88,6 +95,11 @@ The beta fails closed rather than silently widening this boundary.
 
 The app stores run reports, screenshots, and recovery snapshots under
 `%LOCALAPPDATA%\FleetFill`; an installed copy never writes beside its executable.
+After the ten UI transactions pass, FleetFill remains armed and waits for ETS2
+to exit cleanly. It then decodes and audits the new autosave automatically,
+updates History to `Live run: Verified`, and unlocks the next run. If FleetFill
+is closed first, reopening it resumes the newest pending audit. A failed audit
+keeps the next batch locked for that session and records its reason locally.
 
 Launch the fixed-scope beta from source:
 

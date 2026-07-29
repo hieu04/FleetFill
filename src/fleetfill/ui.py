@@ -49,10 +49,12 @@ from fleetfill.domain import (
     simulator_arguments,
 )
 from fleetfill.preflight import ProfilePreflight, assess_active_profile
+from fleetfill.audit import SaveAuditProcessSupervisor
 from fleetfill.process import ControllerProcessSupervisor
 from fleetfill.runner import (
     RunHistoryRecord,
     RunnerState,
+    find_latest_pending_save_audit,
     read_history_records,
     write_history_record,
 )
@@ -125,6 +127,7 @@ class SetupPage(QWidget):
             or bool(main_profile_name)
         )
         self.run_is_simulation = True
+        self.execution_locked = False
         self.live_run_label = "Live validation"
         self.profiles: list[ProfileInfo] = []
 
@@ -403,7 +406,7 @@ class SetupPage(QWidget):
         self.review_values["truck_cost"].setText(money(request.truck_cost_eur))
         self.review_values["hire_cost"].setText(money(request.driver_cost_eur))
         self.total_value.setText(money(request.total_cost_eur))
-        self.review_button.setEnabled(not errors)
+        self.review_button.setEnabled(not errors and not self.execution_locked)
         if errors:
             self.profile_check.setObjectName("warningText")
             self.profile_check.setText(f"○  {errors[0]}")
@@ -418,6 +421,13 @@ class SetupPage(QWidget):
         self.profile_check.style().polish(self.profile_check)
         self._show_active_profile_result(None)
         self.plan_changed.emit()
+
+    def set_execution_locked(self, locked: bool) -> None:
+        """Prevent profile changes from bypassing a run or audit checkpoint."""
+
+        self.execution_locked = locked
+        errors = validate_request(self.current_request())
+        self.review_button.setEnabled(not errors and not locked)
 
     def _show_active_profile_result(self, result: ProfilePreflight | None) -> None:
         if result is None:
@@ -458,6 +468,21 @@ class SetupPage(QWidget):
         self.run_status_card.raise_()
         if state in {RunnerState.SUCCEEDED, RunnerState.CANCELLED, RunnerState.FAILED}:
             self.status_hide_timer.start(3500)
+
+    def show_audit_status(self, title: str, message: str, terminal: bool) -> None:
+        """Show the non-cancellable post-exit checkpoint in the same status card."""
+
+        self.run_status_title.setText(title)
+        self.run_status_message.setText(message)
+        self.cancel_button.hide()
+        self.cancel_button.setEnabled(False)
+        self.status_hide_timer.stop()
+        self.run_status_card.adjustSize()
+        self._position_run_status()
+        self.run_status_card.show()
+        self.run_status_card.raise_()
+        if terminal:
+            self.status_hide_timer.start(5000)
 
     def set_run_kind(
         self, *, simulated: bool, live_label: str = "Live validation"
@@ -636,7 +661,17 @@ class HistoryPage(QWidget):
             return
         latest = records[0]
         kind = "Simulation" if latest.simulated else "Live run"
-        self.history_title.setText(f"{kind}: {latest.state.replace('_', ' ').title()}")
+        if not latest.simulated and latest.save_audit_passed is True:
+            outcome = "Verified"
+        elif not latest.simulated and latest.save_audit_passed is False:
+            outcome = "Save audit failed"
+        elif not latest.simulated and latest.validation_passed is True:
+            outcome = "Awaiting save audit"
+        elif not latest.simulated and latest.validation_passed is False:
+            outcome = "Runtime validation failed"
+        else:
+            outcome = latest.state.replace("_", " ").title()
+        self.history_title.setText(f"{kind}: {outcome}")
         details = (
             f"{latest.created_at}  •  {latest.profile_name}  •  {latest.slots} slot(s)\n"
             f"Completed {latest.completed_transactions} of "
@@ -659,7 +694,9 @@ class HistoryPage(QWidget):
         elif latest.save_audit_passed is False:
             details += "\nSave audit: Failed. Do not continue to larger batches."
         elif latest.validation_passed is True:
-            details += "\nSave audit: Pending clean ETS2 exit."
+            details += "\nSave audit: Waiting for ETS2 to exit."
+        if latest.save_audit_error:
+            details += f"\nSave audit reason: {latest.save_audit_error}"
         if latest.save_audit_report:
             details += f"\nSave audit report: {latest.save_audit_report}"
         if latest.target_garage:
@@ -757,6 +794,7 @@ class MainWindow(QMainWindow):
             or bool(main_profile_name)
         )
         self.supervisor = ControllerProcessSupervisor(self)
+        self.audit_supervisor = SaveAuditProcessSupervisor(self)
         self._active_run_dir: Path | None = None
         self._active_profile_name = ""
         self._active_slots = 0
@@ -836,6 +874,8 @@ class MainWindow(QMainWindow):
         self.setup_page.cancel_requested.connect(self.supervisor.request_cancel)
         self.supervisor.state_changed.connect(self.setup_page.show_run_status)
         self.supervisor.run_finished.connect(self._finish_run)
+        self.audit_supervisor.status_changed.connect(self._show_audit_status)
+        self.audit_supervisor.audit_finished.connect(self._finish_save_audit)
 
         group = QButtonGroup(self)
         group.setExclusive(True)
@@ -859,6 +899,8 @@ class MainWindow(QMainWindow):
 
         body.addWidget(sidebar)
         body.addWidget(self.stack, 1)
+        if self.live_execution_enabled:
+            self._resume_pending_save_audit()
 
     def _show_page(self, page: int) -> None:
         if page == 1:
@@ -885,7 +927,7 @@ class MainWindow(QMainWindow):
         self._active_slots = request.slots
         self._active_simulated = True
         self.setup_page.set_run_kind(simulated=True)
-        self.setup_page.review_button.setEnabled(False)
+        self.setup_page.set_execution_locked(True)
         self.setup_page.show_run_status(
             RunnerState.COUNTDOWN,
             "Starting the no-input lifecycle simulator. ETS2 will not be controlled.",
@@ -947,7 +989,7 @@ class MainWindow(QMainWindow):
         self._active_slots = request.slots
         self._active_simulated = False
         self.setup_page.set_run_kind(simulated=False, live_label=live_label)
-        self.setup_page.review_button.setEnabled(False)
+        self.setup_page.set_execution_locked(True)
         self.setup_page.show_run_status(
             RunnerState.COUNTDOWN,
             "Return to ETS2 now. Input begins after the controller's 10-second countdown.",
@@ -961,8 +1003,8 @@ class MainWindow(QMainWindow):
         )
 
     def _finish_run(self, model) -> None:
-        self.setup_page.review_button.setEnabled(True)
         if self._active_run_dir is None:
+            self.setup_page.set_execution_locked(False)
             return
         validation_passed = None
         validation_report = None
@@ -1008,6 +1050,32 @@ class MainWindow(QMainWindow):
         )
         write_history_record(record, self._active_run_dir)
         self.history_page.refresh()
+        if (
+            not self._active_simulated
+            and model.state == RunnerState.SUCCEEDED
+            and validation_passed is True
+        ):
+            self._arm_save_audit(self._active_run_dir)
+        else:
+            self.setup_page.set_execution_locked(False)
+
+    def _resume_pending_save_audit(self) -> None:
+        pending = find_latest_pending_save_audit(self.history_page.history_root)
+        if pending is not None:
+            self._arm_save_audit(pending)
+
+    def _arm_save_audit(self, run_dir: Path) -> None:
+        self.setup_page.set_execution_locked(True)
+        self.audit_supervisor.arm(run_dir)
+        self.history_page.refresh()
+
+    def _show_audit_status(self, title: str, message: str, terminal: bool) -> None:
+        self.setup_page.show_audit_status(title, message, terminal)
+
+    def _finish_save_audit(self, _run_dir: Path, passed: bool, _message: str) -> None:
+        self.history_page.refresh()
+        self._show_page(1)
+        self.setup_page.set_execution_locked(not passed)
 
 
 def build_window(
