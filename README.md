@@ -59,6 +59,13 @@ driver totals increasing from 139 to 144, five unique matching trucks, five
 unique Munich-based drivers, and preservation of all 139 pre-existing truck
 configurations and every unrelated garage.
 
+The installed 0.1.2 personal beta has now completed the same fixed 5+5 boundary
+on the Steam Cloud career. It filled the previously empty Ajaccio garage and
+passed both runtime validation and the independent clean-exit save audit. The
+audit verified the exact EUR 1,249,925 deduction, five matching trucks, five
+Ajaccio-based drivers, preservation of all 140 pre-existing trucks, and an
+unchanged active World of Trucks delivery.
+
 This is still a calibrated prototype. It should not be treated as compatible
 with other ETS2 versions, resolutions, UI languages, truck cards, or profiles
 until those combinations have their own recognition evidence and tests.
@@ -109,6 +116,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\build-installe
 Generated bundles and installers are local artifacts and are excluded from Git.
 The calibrated recognition frames required for a personal build are also local,
 ignored evidence; hosted GitHub builds do not currently publish binaries.
+
+### Troubleshooting fullscreen input
+
+FleetFill relies on ETS2 accepting relative mouse input while the game owns the
+exclusive-fullscreen foreground. If a run stops at its first navigation step
+with zero completed actions, first exit ETS2 and restart Windows before changing
+the app or its calibration. During installed-beta validation, a stale desktop or
+Steam input state caused Windows to accept synthetic movement while ETS2 ignored
+it; the unchanged 0.1.2 installer completed a full 5+5 run after a PC restart.
+The run fails closed in this condition, before purchasing a truck or hiring a
+driver.
 
 ## How it works
 

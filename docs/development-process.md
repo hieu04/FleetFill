@@ -800,3 +800,27 @@ image from the same runtime root used by the probes, opens it with Pillow, and
 fully decodes its pixels. The build cannot produce an installer unless this
 check passes inside `FleetFillWorker`, covering file presence, destination path,
 image integrity, and frozen Pillow decoding together.
+
+## 36. Certify the installed 0.1.2 personal beta
+
+An initial installed 0.1.2 attempt stopped safely at the first navigation step
+with zero of ten actions. Both the installed and source pointer probes showed
+the same symptom: Windows accepted relative input calls, but ETS2 did not move
+or wake its exclusive-fullscreen cursor. The ETS2 executable, calibrated frames,
+profile bindings, and FleetFill package were unchanged. Restarting Windows
+cleared the stale desktop or Steam input state; without rebuilding or modifying
+0.1.2, the next installed run completed all ten guarded transactions.
+
+The installed beta selected the previously empty Ajaccio garage, bought five
+matching Scania Streamline Topline trucks, and assigned five unique drivers.
+The independent clean-exit audit reconciled the exact EUR 1,249,925 spend,
+company truck growth from 140 to 145, driver growth from 139 to 144, and online
+purchase growth from 149 to 154. Every unrelated garage and all 140 pre-existing
+truck configurations remained unchanged. All new trucks have full fuel, zero
+odometer, and the same 37-accessory configuration. The active World of Trucks
+job ID `147800486` and its delivery fingerprint were preserved exactly.
+
+This establishes the normal per-user installer—not only the source and portable
+build—as certified for the frozen personal-beta environment. A zero-action stop
+at initial navigation is now documented as an input-environment fault: exit the
+game and restart Windows before recalibrating or changing FleetFill.

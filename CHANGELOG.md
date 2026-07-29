@@ -7,6 +7,13 @@ not produced a public release yet.
 
 ### Fixed
 
+- Verified that a transient stale Windows/Steam input state can prevent ETS2
+  from consuming otherwise accepted relative mouse events. Documented a full
+  Windows restart as the first zero-transaction recovery step; the unchanged
+  0.1.2 installed build subsequently completed and audited a full 5+5 run.
+- Strengthened the Services-hover diagnostic so it verifies that the fly-out
+  actually appeared instead of reporting success after pointer movement alone.
+
 - Packaged all home-menu, Services-flyout, recruitment-map, and fleet-card
   calibration images used by the live workflow, fixing the installed worker's
   immediate Step 1 resource failure.
