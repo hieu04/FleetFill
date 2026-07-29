@@ -824,3 +824,59 @@ This establishes the normal per-user installer—not only the source and portabl
 build—as certified for the frozen personal-beta environment. A zero-action stop
 at initial navigation is now documented as an input-environment fault: exit the
 game and restart Windows before recalibrating or changing FleetFill.
+
+## 37. Make clean-exit certification automatic
+
+The certified 0.1.2 workflow still required a developer to launch the post-exit
+save finalizer manually. That was safe but incomplete as a normal application:
+History could report a successful runtime while the authoritative autosave
+remained unaudited, and the user could begin another batch before completing
+the final checkpoint.
+
+Version 0.1.3 makes that checkpoint part of the desktop lifecycle. After all UI
+transactions and runtime evidence pass, the Setup action remains locked and a
+Qt supervisor waits without sending input. Once ETS2 exits, FleetFill launches
+the frozen worker against `finalize_batch_validation.py`, using the bundled Node
+runtime to decode copied before/after saves and the existing semantic verifier
+to reconcile money, trucks, drivers, garage scope, configurations, and active
+delivery state. History now distinguishes `Awaiting save audit`, `Verified`,
+and `Save audit failed` instead of treating runtime completion as final proof.
+
+The pending state is derived from durable `desktop-run.json` evidence rather
+than GUI memory. Reopening the personal beta finds the newest successful live
+run whose runtime validation passed but whose save audit has no result, locks
+the next batch, and resumes waiting or auditing. Infrastructure failures are
+written back to the same record with a readable reason. Seven new desktop tests
+cover selection of the newest pending record, restart recovery, non-cancellable
+status presentation, packaged command construction, profile-change-resistant
+review-button locking, and
+durable failure state. Together with the existing research suite, the offline
+gate now contains 190 tests.
+
+## 38. Certify the automatic installed workflow
+
+The normal per-user 0.1.3 installer passed the complete frozen-runtime build
+gate and replaced 0.1.2. Its final live acceptance run used the named Steam
+Cloud career and completed all ten guarded 5+5 actions. FleetFill selected the
+previously empty Olbia garage, bought five matching Scania Streamline Topline
+trucks, and assigned five unique drivers.
+
+After the controller and runtime validator passed, FleetFill remained armed
+while ETS2 was open. The user exited ETS2 normally; no developer finalizer was
+started. The desktop supervisor detected the clean exit, launched the bundled
+worker and Node decoder, completed the semantic save comparison, switched to
+History, and displayed `Live run: Verified` with `garage.olbia` as the verified
+target.
+
+The audit reconciled the company balance from EUR 78,076,748 to EUR 76,826,823,
+an exact EUR 1,249,925 deduction with no employee-profit events or new active-job
+fines. Online truck purchases advanced from 154 to 159, company trucks from 145
+to 150, and company drivers from 144 to 149. All five target indexes changed
+from empty to unique truck/driver pairs; the trucks share the certified
+37-accessory configuration, full fuel, and zero odometer. Every unrelated
+garage, all 145 pre-existing vehicle configurations, and World of Trucks job
+`147800486` with its delivery fingerprint remained unchanged.
+
+This run certifies both halves of the 0.1.3 product workflow: installed UI
+automation and automatic authoritative-save verification. Manual post-exit
+commands are no longer part of the personal-beta user procedure.

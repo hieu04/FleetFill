@@ -10,7 +10,12 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $appBuild = Join-Path $PSScriptRoot "build-personal-beta.ps1"
 $installerScript = Join-Path $projectRoot "packaging\FleetFill.iss"
-$installerOutput = Join-Path $projectRoot "packaging\dist\installer\FleetFill-Personal-Beta-Setup-0.1.2.exe"
+$installerDefinition = Get-Content -LiteralPath $installerScript -Raw
+if ($installerDefinition -notmatch '#define AppVersion "([^"]+)"') {
+    throw "FleetFill.iss does not define AppVersion."
+}
+$appVersion = $Matches[1]
+$installerOutput = Join-Path $projectRoot "packaging\dist\installer\FleetFill-Personal-Beta-Setup-$appVersion.exe"
 $compilerCandidates = @(
     (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 7\ISCC.exe"),
     (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),

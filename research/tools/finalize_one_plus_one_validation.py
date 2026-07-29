@@ -14,6 +14,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from fleetfill.runtime import node_executable
+
 
 PER_SLOT_COST_EUR = 249_985
 
@@ -46,7 +48,13 @@ def run_checked(command: list[str], *, cwd: Path | None = None) -> None:
         )
 
 
-def record_save_audit(run_dir: Path, *, passed: bool, report: Path | None) -> None:
+def record_save_audit(
+    run_dir: Path,
+    *,
+    passed: bool,
+    report: Path | None,
+    error: str | None = None,
+) -> None:
     """Persist the deep result into both runtime evidence and app History."""
 
     target_garage = None
@@ -65,6 +73,7 @@ def record_save_audit(run_dir: Path, *, passed: bool, report: Path | None) -> No
         payload = json.loads(desktop_record.read_text(encoding="utf-8"))
         payload["save_audit_passed"] = passed
         payload["save_audit_report"] = str(report.resolve()) if report else None
+        payload["save_audit_error"] = error
         payload["target_garage"] = target_garage
         desktop_record.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -99,10 +108,11 @@ def main() -> int:
     after_text = evidence_dir / "after-game.txt"
     report = evidence_dir / "save-audit.json"
     try:
-        run_checked(["node", str(decoder), str(before), str(before_text)], cwd=inspector)
-        run_checked(["node", str(decoder), str(after), str(after_text)], cwd=inspector)
+        node = str(node_executable())
+        run_checked([node, str(decoder), str(before), str(before_text)], cwd=inspector)
+        run_checked([node, str(decoder), str(after), str(after_text)], cwd=inspector)
     except (OSError, RuntimeError, ValueError) as error:
-        record_save_audit(run_dir, passed=False, report=None)
+        record_save_audit(run_dir, passed=False, report=None, error=str(error))
         print(f"VALIDATION_FAILED: {error}")
         return 1
     verification = subprocess.run(
@@ -122,7 +132,12 @@ def main() -> int:
         check=False,
     )
     passed = verification.returncode == 0
-    record_save_audit(run_dir, passed=passed, report=report if report.is_file() else None)
+    record_save_audit(
+        run_dir,
+        passed=passed,
+        report=report if report.is_file() else None,
+        error=None if passed else "The semantic save audit did not pass.",
+    )
     if not passed:
         print("VALIDATION_FAILED: The semantic save audit did not pass.")
         return 1

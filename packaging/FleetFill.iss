@@ -1,5 +1,5 @@
 #define AppName "FleetFill"
-#define AppVersion "0.1.2"
+#define AppVersion "0.1.3"
 #define AppPublisher "FleetFill contributors"
 #define AppExeName "FleetFill.exe"
 

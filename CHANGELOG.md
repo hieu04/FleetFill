@@ -26,6 +26,23 @@ not produced a public release yet.
 
 ### Added
 
+- Automatic clean-exit save auditing after a successful live batch. FleetFill
+  now waits for ETS2 to close, invokes the bundled decoder and semantic verifier,
+  promotes History from `Awaiting save audit` to `Verified`, and keeps another
+  batch locked until that checkpoint finishes.
+- Durable pending-audit recovery on app startup, so closing FleetFill before
+  ETS2 does not lose the final verification step.
+- Packaged save finalization now resolves FleetFill's bundled Node executable
+  instead of requiring Node on the installed user's PATH.
+- Seven desktop regression tests for pending-audit selection, recovery, status,
+  command construction, locking, and durable failure records, bringing the
+  offline suite to 190 tests.
+- Successful installed 0.1.3 certification: ten guarded transactions filled
+  the empty Olbia garage, and the app automatically detected clean ETS2 exit,
+  audited the autosave, and promoted History to `Live run: Verified`. The audit
+  reconciled the exact EUR 1,249,925 spend, five trucks, five drivers, all 145
+  pre-existing truck configurations, and the active World of Trucks delivery.
+
 - A fixed-scope personal-beta desktop mode that exposes only the certified
   Steam Cloud 5+5 path and locks the garage, truck card, driver policy, and
   quantity to the proven configuration.

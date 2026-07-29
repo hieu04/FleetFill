@@ -11,9 +11,13 @@ from fleetfill.runner import (
     RunnerState,
     SupervisedRun,
     RunHistoryRecord,
+    find_latest_pending_save_audit,
+    is_pending_save_audit,
+    read_history_record,
     read_history_records,
     read_checkpoint,
     require_live_execution_enabled,
+    record_save_audit_failure,
     write_history_record,
 )
 
@@ -124,6 +128,57 @@ class SupervisedRunTests(unittest.TestCase):
             write_history_record(record, run_dir)
             loaded = read_history_records(root)
         self.assertEqual(loaded, [record])
+
+    def test_latest_pending_save_audit_is_resumable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            older = root / "older"
+            newer = root / "newer"
+            for run_dir, created_at in (
+                (older, "2026-07-29T12:00:00"),
+                (newer, "2026-07-29T13:00:00"),
+            ):
+                record = RunHistoryRecord(
+                    run_id=run_dir.name,
+                    created_at=created_at,
+                    profile_name="Main",
+                    slots=5,
+                    simulated=False,
+                    state=RunnerState.SUCCEEDED.value,
+                    completed_transactions=10,
+                    requested_transactions=10,
+                    report_path=None,
+                    backup_path=None,
+                    error=None,
+                    validation_passed=True,
+                )
+                write_history_record(record, run_dir)
+                self.assertTrue(is_pending_save_audit(record))
+            self.assertEqual(find_latest_pending_save_audit(root), newer)
+
+    def test_save_audit_failure_is_durable_and_no_longer_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp) / "run"
+            record = RunHistoryRecord(
+                run_id="run",
+                created_at="2026-07-29T13:00:00",
+                profile_name="Main",
+                slots=5,
+                simulated=False,
+                state=RunnerState.SUCCEEDED.value,
+                completed_transactions=10,
+                requested_transactions=10,
+                report_path=None,
+                backup_path=None,
+                error=None,
+                validation_passed=True,
+            )
+            write_history_record(record, run_dir)
+            record_save_audit_failure(run_dir, "decoder unavailable")
+            updated = read_history_record(run_dir / "desktop-run.json")
+            self.assertFalse(updated.save_audit_passed)
+            self.assertEqual(updated.save_audit_error, "decoder unavailable")
+            self.assertFalse(is_pending_save_audit(updated))
 
 
 if __name__ == "__main__":
