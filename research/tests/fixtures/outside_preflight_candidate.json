@@ -1,0 +1,15 @@
+{
+  "description": "Iasi was outside the preflight-approved empty-garage set for this run. This fixture tests identity filtering only. Ten garage activations and the related EUR 2,800,000 balance change observed later were intentional manual purchases during the same session, not FleetFill actions.",
+  "run_id": "20260730-072256-031199-personal-beta",
+  "step": "008-truck-find-visible-capacity-garage",
+  "marker": [1212, 312],
+  "rendered_city": "Iasi",
+  "garage_id": "garage.iasi",
+  "preflight_status": 0,
+  "approved_garage_ids": ["garage.debrecen", "garage.brasov"],
+  "external_change_source": "intentional_manual_purchase",
+  "external_manual_garage_purchase_count": 10,
+  "external_manual_garage_purchase_cost_eur": 2800000,
+  "source_capture": "direct-capture-20260730-072347-780174.png",
+  "source_capture_sha256": "71F8AAC96D6084C7C5E53149B38E80270318BE717054BF5C91873E4FEB6E2693"
+}

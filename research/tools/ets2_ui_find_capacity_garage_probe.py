@@ -1,8 +1,9 @@
 """Select the first visible ETS2 garage with enough usable capacity.
 
-An ETS2 marker click can itself buy an unowned garage. The live path therefore
-hovers first, OCRs the city tooltip, and clicks only a garage present in the
-preflight-owned allowlist. It never clicks a slot or confirmation button.
+The live path hovers first, OCRs the city tooltip, and clicks only a garage in
+the preflight-approved empty-garage allowlist. This makes target selection
+deterministic; the truck-delivery dialog cannot purchase garages. The probe
+never clicks a slot or confirmation button.
 """
 
 from __future__ import annotations

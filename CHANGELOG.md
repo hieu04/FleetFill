@@ -5,6 +5,13 @@ currently distributed as a personal-beta Windows application.
 
 ## Unreleased
 
+### Documentation
+
+- Corrected the attribution of ten garage activations and an additional
+  EUR 2,800,000 balance change observed during 0.2.1 research. Those garages
+  were intentionally purchased manually during the same session; FleetFill did
+  not and cannot purchase garages through the truck-delivery dialog.
+
 ## 0.2.1 - 2026-07-30
 
 ### Fixed
@@ -21,13 +28,13 @@ currently distributed as a personal-beta Windows application.
   records the dark portrait's measured color and yellow-pixel counts.
 - Garage discovery now hovers over each candidate and uses Windows' built-in
   offline OCR to identify its city before clicking. The city must resolve
-  uniquely to a completely empty, already-owned garage proven by preflight;
-  unknown, ambiguous, and unowned markers are skipped without a click.
+  uniquely to a completely empty garage approved by preflight; unknown,
+  ambiguous, and outside-the-reviewed-set candidates are skipped without a
+  click.
 - Post-exit auditing now detects and reports garage status changes separately
-  from filled-garage slot changes, including unplanned status-0 activations.
-- Added a regression manifest from the first dense-map retry, where ten
-  unowned marker clicks silently bought ten garages and deducted an additional
-  EUR 2,800,000 despite the intended truck and driver assignments succeeding.
+  from filled-garage slot changes. This keeps concurrent manual company changes
+  separate from the truck-and-driver result without assigning their cause to
+  FleetFill.
 - Packaged worker pipes now force UTF-8 with escaped-output fallback, preventing
   localized OCR text or the Unicode replacement character from crashing garage
   discovery before it reaches an eligible owned marker.
@@ -39,7 +46,7 @@ currently distributed as a personal-beta Windows application.
   candidates but issued only three marker clicks: one selected `garage.galati`,
   one rechecked that now-full garage during the second sub-run, and one selected
   `garage.pitesti`. The audit verified exactly those two filled garages and no
-  unplanned garage activation.
+  concurrent garage-status change.
 
 ## 0.2.0 - 2026-07-30
 
