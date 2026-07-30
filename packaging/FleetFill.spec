@@ -59,6 +59,7 @@ def distribution_notices(package_name):
 
 runtime_datas = [
     *((str(path), "research/tools") for path in sorted(TOOLS.glob("*.py"))),
+    (str(TOOLS / "windows_ocr.ps1"), "research/tools"),
     *(
         (str(ROOT / relative), str(Path(relative).parent))
         for relative in reference_files

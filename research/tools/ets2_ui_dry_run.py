@@ -95,6 +95,9 @@ def slot_distance(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.mean(np.abs(left - right)))
 
 
+MIN_OCCUPIED_PORTRAIT_COLOR_PIXELS = 64
+
+
 def is_occupied_portrait(strongly_colored_pixels: int, yellow_pixels: int) -> bool:
     """Separate a colorful driver portrait from ETS2's yellow slot selection.
 
@@ -103,7 +106,7 @@ def is_occupied_portrait(strongly_colored_pixels: int, yellow_pixels: int) -> bo
     yellow, so its yellow-to-color ratio is much higher.
     """
     return (
-        strongly_colored_pixels >= 200
+        strongly_colored_pixels >= MIN_OCCUPIED_PORTRAIT_COLOR_PIXELS
         and yellow_pixels < strongly_colored_pixels * 0.65
     )
 
@@ -227,7 +230,7 @@ def classify_slots(image: Image.Image, references: dict[str, Image.Image]) -> li
         elif (
             best_name == "free"
             and yellow_pixels < 80
-            and strongly_colored_pixels < 200
+            and strongly_colored_pixels < MIN_OCCUPIED_PORTRAIT_COLOR_PIXELS
             and 0.07 <= best_distance <= 0.16
         ):
             best_name = "truck_present"

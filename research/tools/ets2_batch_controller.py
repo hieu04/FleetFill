@@ -181,10 +181,15 @@ def discover_dynamic_garage(
     """Find capacity in the current view, then use one bounded pan if needed."""
     require_empty = bool(getattr(args, "require_empty_garage", False))
     required = str(state.free if require_empty else args.count)
+    allowed_arguments = [
+        argument
+        for garage_id in getattr(args, "allowed_garage_ids", [])
+        for argument in ("--allowed-garage-id", garage_id)
+    ]
     visible = runner.run(
         f"{context}-find-visible-capacity-garage",
         "ets2_ui_find_capacity_garage_probe.py",
-        ["--context", context, "--required", required],
+        ["--context", context, "--required", required, *allowed_arguments],
         "FIND_CAPACITY_GARAGE_REPORT",
         accepted_return_codes=(0, 7),
     )
@@ -194,7 +199,7 @@ def discover_dynamic_garage(
         discovery = runner.run(
             f"{context}-find-capacity-after-pan",
             "ets2_ui_find_after_pan_probe.py",
-            ["--context", context, "--required", required],
+            ["--context", context, "--required", required, *allowed_arguments],
             "FIND_AFTER_PAN_REPORT",
         )
         locator = discovery.get("locator")
@@ -216,7 +221,8 @@ def discover_dynamic_garage(
     if not isinstance(target, list) or len(target) != 2:
         raise BatchAbort("Dynamic garage report omitted its marker position")
     args.garage_x, args.garage_y = int(target[0]), int(target[1])
-    args.garage_label = "Dynamically selected garage"
+    selected_garage_id = found.get("identity", {}).get("garage_id")
+    args.garage_label = selected_garage_id or "Dynamically selected garage"
     args.garage_locator_report = str(locator_report) if locator_report else None
 
 
@@ -1145,6 +1151,9 @@ def run_live(args: argparse.Namespace) -> int:
                 args.count,
                 args.garages,
             )
+            args.allowed_garage_ids = preflight_payload["company"][
+                "empty_large_garages"
+            ]
         except (BatchAbort, OSError, ValueError, json.JSONDecodeError) as error:
             preflight_payload["company_preflight_error"] = str(error)
             (run_dir / "preflight.json").write_text(

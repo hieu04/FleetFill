@@ -1,8 +1,9 @@
 """Pan once, then find a qualifying garage in the shifted ETS2 map view.
 
 This research probe exercises the fallback path even when the initial view has
-qualifying garages. It clicks garage markers only after a verified coherent
-pan and never selects a slot or confirmation button.
+qualifying garages. It hovers and identifies each candidate against the
+preflight-owned allowlist, then clicks only after a verified coherent pan. It
+never selects a slot or confirmation button.
 """
 
 from __future__ import annotations
@@ -18,9 +19,12 @@ from ets2_truck_ui_dry_run import load_truck_references
 from ets2_ui_dealer_pan_probe import dominant_marker_translation
 from ets2_ui_dry_run import DEFAULT_NVIDIA_SCREENSHOT_DIR, load_references
 from ets2_ui_find_capacity_garage_probe import (
+    DEFAULT_MAX_MARKERS,
     capture_for_context,
     has_capacity,
+    identify_hovered_garage,
     is_resolved_unselected,
+    resolve_allowed_garage_id,
     slot_counts,
 )
 from ets2_ui_garage_pan_probe import (
@@ -54,11 +58,13 @@ def main() -> int:
     parser.add_argument("--required", type=int, required=True)
     parser.add_argument("--delay", type=float, default=8.0)
     parser.add_argument("--between-markers", type=float, default=0.7)
+    parser.add_argument("--hover-delay", type=float, default=0.35)
     parser.add_argument("--capture-timeout", type=float, default=20.0)
     parser.add_argument("--integrity-attempts", type=int, default=4)
     parser.add_argument("--minimum-clearance", type=float, default=70.0)
     parser.add_argument("--minimum-translation", type=int, default=80)
-    parser.add_argument("--max-markers", type=int, default=30)
+    parser.add_argument("--max-markers", type=int, default=DEFAULT_MAX_MARKERS)
+    parser.add_argument("--allowed-garage-id", action="append", default=[])
     parser.add_argument(
         "--screenshot-dir", type=Path, default=DEFAULT_NVIDIA_SCREENSHOT_DIR
     )
@@ -72,6 +78,10 @@ def main() -> int:
     args = parser.parse_args()
     if not 1 <= args.required <= 5:
         parser.error("--required must be between 1 and 5")
+    if not args.allowed_garage_id:
+        parser.error(
+            "at least one --allowed-garage-id from company preflight is required"
+        )
 
     references = load_truck_references() if args.context == "truck" else load_references()
     expected_state = "truck_garage_selection" if args.context == "truck" else "garage_selection"
@@ -156,6 +166,69 @@ def main() -> int:
     for candidate in actionable_markers:
         target = tuple(candidate["center"])
         set_pointer(target)
+        identity: dict = {
+            "recognized_name": None,
+            "garage_id": None,
+            "preflight_owned": not args.allowed_garage_id,
+        }
+        if args.allowed_garage_id:
+            time.sleep(args.hover_delay)
+            hover_shot, hover_image, hover_analysis, hover_annotated, hover_report = (
+                capture_for_context(
+                    args.context,
+                    args.screenshot_dir,
+                    args.capture_timeout,
+                    output_dir,
+                    references,
+                    args.integrity_attempts,
+                )
+            )
+            if (
+                hover_analysis.get("state") != expected_state
+                or not hover_analysis.get("safe_to_act")
+            ):
+                print(
+                    "PAN_FIND_ABORTED: unsafe screen while identifying "
+                    f"candidate {candidate['candidate']}: {hover_analysis}"
+                )
+                return 8
+            recognized_name, tooltip_crop, ocr = identify_hovered_garage(
+                hover_image, candidate, output_dir
+            )
+            garage_id = (
+                resolve_allowed_garage_id(recognized_name, args.allowed_garage_id)
+                if recognized_name
+                else None
+            )
+            identity = {
+                "recognized_name": recognized_name,
+                "garage_id": garage_id,
+                "preflight_owned": garage_id is not None,
+                "hover_screenshot": str(hover_shot),
+                "hover_annotated": str(hover_annotated),
+                "hover_report": str(hover_report),
+                "tooltip_crop": str(tooltip_crop),
+                "ocr": ocr,
+            }
+            if garage_id is None:
+                attempts.append(
+                    {
+                        "candidate": candidate["candidate"],
+                        "marker": candidate,
+                        "target_position": list(target),
+                        "identity": identity,
+                        "selected": False,
+                        "slot_states": None,
+                        "slot_counts": None,
+                        "qualifies": False,
+                    }
+                )
+                print(
+                    f"shifted candidate {candidate['candidate']} at {target}: "
+                    f"hover={recognized_name!a}, not in preflight-owned list; skipped"
+                )
+                set_pointer(SAFE_POINTER)
+                continue
         click_left_once()
         set_pointer(SAFE_POINTER)
         time.sleep(args.between_markers)
@@ -175,6 +248,8 @@ def main() -> int:
             "candidate": candidate["candidate"],
             "marker": candidate,
             "target_position": list(target),
+            "identity": identity,
+            "selected": True,
             "slot_states": states,
             "slot_counts": slot_counts(states) if is_resolved_unselected(states) else None,
             "qualifies": has_capacity(states, args.context, args.required),
@@ -214,10 +289,12 @@ def main() -> int:
         "gameplay_transactions": 0,
         "context": args.context,
         "required": args.required,
-        "garage_marker_clicks": len(attempts),
+        "garage_marker_hovers": len(attempts) if args.allowed_garage_id else 0,
+        "garage_marker_clicks": sum(attempt.get("selected", True) for attempt in attempts),
         "slot_clicks": 0,
         "confirmation_clicks": 0,
         "map_drags": 1,
+        "allowed_garage_ids": args.allowed_garage_id,
         "initial": {
             "screenshot": str(before_shot),
             "annotated": str(before_annotated),

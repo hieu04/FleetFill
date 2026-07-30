@@ -6,13 +6,35 @@ from verify_fill_batch_save import (
     active_delivery_preserved,
     active_delivery_state,
     changed_slot_indexes,
+    garage_arrays,
     garage_batch_records,
+    garage_changed,
     profit_entry_net,
     unique_new_profit_events,
 )
 
 
 class FillBatchSlotDiffTests(unittest.TestCase):
+    def test_status_zero_garage_activation_is_detected(self) -> None:
+        before = garage_arrays(
+            [
+                (
+                    "garage",
+                    "garage.iasi",
+                    " vehicles: 0\n drivers: 0\n status: 0\n",
+                )
+            ]
+        )["garage.iasi"]
+        after = {
+            "vehicles": [f"vehicle.{index}" for index in range(5)],
+            "drivers": [f"driver.{index}" for index in range(5)],
+            "status": 3,
+        }
+
+        self.assertEqual(before["vehicles"], [])
+        self.assertEqual(before["status"], 0)
+        self.assertTrue(garage_changed(before, after))
+
     def test_multi_garage_records_keep_each_city_and_pairing(self) -> None:
         old = {
             city: {"vehicles": ["null"] * 5, "drivers": ["null"] * 5}

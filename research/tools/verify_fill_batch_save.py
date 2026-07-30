@@ -214,27 +214,83 @@ def active_job_fines(state: dict[str, object]) -> int:
     return int(match.group(1)) if match else 0
 
 
-def garage_arrays(units: list[tuple[str, str, str]]) -> dict[str, dict[str, list[str]]]:
+def garage_arrays(units: list[tuple[str, str, str]]) -> dict[str, dict[str, object]]:
     result = {}
     for unit_type, unit_id, body in units:
         if unit_type != "garage":
             continue
         vehicles = array(body, "vehicles")
         drivers = array(body, "drivers")
-        if vehicles and len(vehicles) == len(drivers):
-            result[unit_id] = {"vehicles": vehicles, "drivers": drivers}
+        if len(vehicles) == len(drivers):
+            result[unit_id] = {
+                "vehicles": vehicles,
+                "drivers": drivers,
+                "status": int(scalar(body, "status")),
+            }
     return result
 
 
+def garage_changed(old_garage: dict[str, object], new_garage: dict[str, object]) -> bool:
+    """Detect slot occupancy changes and unplanned garage activation."""
+    return (
+        old_garage.get("status") != new_garage.get("status")
+        or garage_slot_shape_changed(old_garage, new_garage)
+    )
+
+
+def garage_slot_shape_changed(
+    old_garage: dict[str, object], new_garage: dict[str, object]
+) -> bool:
+    """Detect paired vehicle/driver occupancy changes independent of status."""
+
+    old_vehicles = list(old_garage.get("vehicles", []))
+    new_vehicles = list(new_garage.get("vehicles", []))
+    old_drivers = list(old_garage.get("drivers", []))
+    new_drivers = list(new_garage.get("drivers", []))
+    slot_count = max(
+        len(old_vehicles), len(new_vehicles), len(old_drivers), len(new_drivers)
+    )
+    for index in range(slot_count):
+        old_vehicle_occupied = (
+            index < len(old_vehicles) and old_vehicles[index] != "null"
+        )
+        new_vehicle_occupied = (
+            index < len(new_vehicles) and new_vehicles[index] != "null"
+        )
+        old_driver_occupied = (
+            index < len(old_drivers) and old_drivers[index] != "null"
+        )
+        new_driver_occupied = (
+            index < len(new_drivers) and new_drivers[index] != "null"
+        )
+        if (
+            old_vehicle_occupied != new_vehicle_occupied
+            or old_driver_occupied != new_driver_occupied
+        ):
+            return True
+    return False
+
+
 def changed_slot_indexes(
-    old_target: dict[str, list[str]], new_target: dict[str, list[str]]
+    old_target: dict[str, object], new_target: dict[str, object]
 ) -> list[int]:
     """Return garage indexes whose paired truck/driver assignment changed."""
 
-    old_vehicles = old_target.get("vehicles", [])
-    old_drivers = old_target.get("drivers", [])
-    new_vehicles = new_target.get("vehicles", [])
-    new_drivers = new_target.get("drivers", [])
+    old_vehicles = list(old_target.get("vehicles", []))
+    old_drivers = list(old_target.get("drivers", []))
+    new_vehicles = list(new_target.get("vehicles", []))
+    new_drivers = list(new_target.get("drivers", []))
+    if (
+        old_target.get("status") == 0
+        and not old_vehicles
+        and not old_drivers
+        and len(new_vehicles) == len(new_drivers)
+    ):
+        return [
+            index
+            for index in range(len(new_vehicles))
+            if new_vehicles[index] != "null" or new_drivers[index] != "null"
+        ]
     if not (
         len(old_vehicles)
         == len(old_drivers)
@@ -251,8 +307,8 @@ def changed_slot_indexes(
 
 
 def garage_batch_records(
-    old_garages: dict[str, dict[str, list[str]]],
-    new_garages: dict[str, dict[str, list[str]]],
+    old_garages: dict[str, dict[str, object]],
+    new_garages: dict[str, dict[str, object]],
     changed: list[str],
 ) -> list[dict[str, object]]:
     """Describe every changed garage and preserve driver-to-city ownership."""
@@ -332,12 +388,20 @@ def main() -> int:
     changed = [
         garage_id
         for garage_id in sorted(set(old_garages) & set(new_garages))
-        if [value != "null" for value in old_garages[garage_id]["vehicles"]]
-        != [value != "null" for value in new_garages[garage_id]["vehicles"]]
-        or [value != "null" for value in old_garages[garage_id]["drivers"]]
-        != [value != "null" for value in new_garages[garage_id]["drivers"]]
+        if garage_changed(old_garages[garage_id], new_garages[garage_id])
     ]
-    target_records = garage_batch_records(old_garages, new_garages, changed)
+    slot_changed = [
+        garage_id
+        for garage_id in changed
+        if garage_slot_shape_changed(old_garages[garage_id], new_garages[garage_id])
+    ]
+    activated_garages = [
+        garage_id
+        for garage_id in changed
+        if old_garages[garage_id].get("status") == 0
+        and new_garages[garage_id].get("status") != 0
+    ]
+    target_records = garage_batch_records(old_garages, new_garages, slot_changed)
     target_vehicle_ids = [
         vehicle_id
         for target in target_records
@@ -408,10 +472,13 @@ def main() -> int:
         == len(old_trucks) + total_count,
         "company_driver_count_increased": len(new_drivers)
         == len(old_drivers) + total_count,
-        "exact_requested_garages_changed": len(changed) == args.garages,
+        "exact_requested_garages_changed": len(slot_changed) == args.garages,
+        "no_unplanned_garage_activation": not activated_garages,
         "targets_were_completely_empty": len(target_records) == args.garages
         and all(
-            len(target["before"]["vehicles"]) >= args.count
+            target["before"].get("status") == 3
+            and target["after"].get("status") == 3
+            and len(target["before"]["vehicles"]) >= args.count
             and all(value == "null" for value in target["before"]["vehicles"])
             and all(value == "null" for value in target["before"]["drivers"])
             for target in target_records
@@ -420,8 +487,14 @@ def main() -> int:
         and all(
             len(target["indexes"]) == args.count
             and all(
-                target["before"]["vehicles"][index] == "null"
-                and target["before"]["drivers"][index] == "null"
+                (
+                    index >= len(target["before"]["vehicles"])
+                    or target["before"]["vehicles"][index] == "null"
+                )
+                and (
+                    index >= len(target["before"]["drivers"])
+                    or target["before"]["drivers"][index] == "null"
+                )
                 and target["after"]["vehicles"][index] != "null"
                 and target["after"]["drivers"][index] != "null"
                 for index in target["indexes"]
@@ -475,10 +548,11 @@ def main() -> int:
     report = {
         "passed": all(checks.values()),
         "checks": checks,
-        "target_garage": changed[0] if len(changed) == 1 else None,
-        "target_garages": changed,
+        "target_garage": slot_changed[0] if len(slot_changed) == 1 else None,
+        "target_garages": slot_changed,
         "target_city": target_records[0]["city"] if len(target_records) == 1 else None,
         "changed_garages": changed,
+        "activated_garages": activated_garages,
         "money": {
             "before": old_money,
             "after": new_money,

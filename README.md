@@ -7,7 +7,7 @@ garage.
 
 The repository contains the proven automation engine, its research tools, and
 the FleetFill desktop app. Version 0.1.4 exposes the certified Steam Cloud 5+5
-workflow. The 0.2.0 release candidate extends that boundary into a guarded
+workflow. The 0.2.0 release extends that boundary into a guarded
 queue of one to ten empty garages. Separate, visibly armed developer launchers
 retain the disposable test career and exact 1+1, 2+2, 3+3, and 5+5 validation
 boundaries. Steam Cloud support includes proven identity, recovery-snapshot,
@@ -166,10 +166,14 @@ memory hook.
 4. The batch controller advances only after the probe writes verifiable JSON
    evidence. Unexpected screens, slot states, prompts, or marker identities
    abort the run.
-5. Garage and dealer markers are detected visually. If several fully visible
-   dealer markers are available, FleetFill chooses the topmost marker, then the
-   leftmost one as a deterministic tie-breaker. When a useful marker is not
-   visible, the controller can pan the map and replay the measured locator.
+5. Garage and dealer markers are detected visually. Before a garage marker can
+   be clicked, FleetFill hovers it and uses Windows' offline OCR to match the
+   tooltip city against the already-owned, empty garages proven by save
+   preflight. Unknown, ambiguous, and unowned markers fail closed. If several
+   fully visible dealer markers are available, FleetFill chooses the topmost
+   marker, then the leftmost one as a deterministic tie-breaker. When a useful
+   marker is not visible, the controller can pan the map and replay the measured
+   locator.
 6. Before a live batch, the controller copies the disposable profile's autosave
    and `profile.sii` into the local run evidence directory.
 7. Separate read-only save inspection tools can compare before/after saves to
@@ -215,8 +219,8 @@ python -m unittest discover -s research\tests -p "test_*.py" -v
 
 The same two suites run automatically on Windows for every pull request and
 every push to `main`. Calibrated visual tests may report as skipped when their
-private ETS2 recording evidence is unavailable. The 0.2.0 development gate
-currently contains 205 passing local tests. The required
+private ETS2 recording evidence is unavailable. The 0.2.1 development gate
+currently contains 216 passing local tests. The required
 status-check context is `Windows test suite`, produced by the `FleetFill tests`
 workflow.
 

@@ -802,6 +802,35 @@ class PhaseCompositionTests(unittest.TestCase):
             discovery[2][discovery[2].index("--required") + 1], "5"
         )
 
+    def test_dynamic_discovery_receives_preflight_owned_garage_allowlist(self):
+        initial = GarageState(0, 0, 5)
+        args = live_args("trucks", 1, initial)
+        args.dynamic_garage = True
+        args.garage_x = None
+        args.garage_y = None
+        args.allowed_garage_ids = ["garage.brasov", "garage.debrecen"]
+        with tempfile.TemporaryDirectory() as temp:
+            runner = FakeRunner(Path(temp))
+            run_truck_phase(runner, args, initial)
+        discovery = next(
+            call
+            for call in runner.calls
+            if call[1] == "ets2_ui_find_capacity_garage_probe.py"
+        )
+        self.assertEqual(
+            discovery[2],
+            [
+                "--context",
+                "truck",
+                "--required",
+                "1",
+                "--allowed-garage-id",
+                "garage.brasov",
+                "--allowed-garage-id",
+                "garage.debrecen",
+            ],
+        )
+
     def test_truck_phase_falls_back_to_pan_and_replays_locator(self):
         initial = GarageState(0, 0, 5)
         args = live_args("trucks", 2, initial)

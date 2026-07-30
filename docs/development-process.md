@@ -969,3 +969,75 @@ EUR 2,499,850 queue cost. All 155 pre-existing vehicle configurations, every
 unrelated garage, and the active delivery were preserved. This certifies the
 queue loop, its between-garage Home boundary, and the one-exit aggregate audit
 in the installed product.
+
+## 41. Hotfix dense garage-selection maps
+
+The first post-release five-garage attempt stopped before its first purchase at
+`truck-find-visible-capacity-garage`. Runtime evidence proved the correct
+garage-selection dialog, five locked slots, zero economic transactions, and 35
+detected garage markers. The detector had not failed: all components matched
+the established garage-icon geometry and brightness ranges. A separate safety
+guard rejected any map containing more than 30 candidates, a threshold derived
+from less densely populated earlier maps.
+
+Version 0.2.1 raises that bounded guard to 60 while retaining the strict icon
+shape filter, recognized-dialog requirement, screenshot-integrity checks, and
+marker-only click scope. The failing capture is represented by a regression
+manifest containing its SHA-256 digest, all 35 centers, and the observed size
+and bright-area ranges. The change does not alter purchases, hiring, queue
+state, or save auditing.
+
+The retry confirmed the dense-map correction and completed 29 of 30 guarded
+transactions across three garages. The final hire then stopped because one
+low-saturation driver portrait contained only 82 strongly colored pixels and
+was classified as a locked slot under the old 200-pixel portrait threshold.
+Historical evidence separated neutral locked and truck-only slots at 0-1
+colored pixels from that portrait, while the existing yellow-ratio guard still
+separates selected free slots. Version 0.2.1 therefore lowers the portrait
+floor to 64 and preserves the yellow-ratio test. A second regression manifest
+records the exact final-slot measurements and source-capture digest.
+
+The completed manual final hire exposed a more serious behavior hidden by the
+original assumption that a marker click merely selected a garage. The save
+audit proved the intended 15 trucks and 15 drivers, the active World of Trucks
+job, and all 165 existing vehicle configurations were preserved. It also found
+that ten status-0 garage markers had been activated during the search. ETS2
+buys an unowned garage immediately when its marker is clicked, so the run spent
+EUR 2,800,000 beyond the planned queue cost.
+
+The 0.2.1 safety correction moves garage ownership validation before the click.
+Company preflight supplies the exact IDs of already-owned, completely empty
+large garages. Discovery hovers each visual candidate, captures its tooltip,
+and uses the Windows built-in offline OCR engine to read the city. Normalized
+OCR text must resolve uniquely to that allowlist before FleetFill may click the
+marker. Unrecognized, ambiguous, and unowned candidates are skipped with zero
+clicks; discovery fails closed if no allowed candidate can be identified. The
+same policy applies after a bounded map pan.
+
+The save auditor now treats garage status transitions and slot occupancy as
+separate evidence. It reports all activated garages, fails a dedicated
+`no_unplanned_garage_activation` check, and still identifies only the three
+garages whose truck/driver occupancy changed. The historical retry now resolves
+to filled `garage.iasi`, `garage.debrecen`, and `garage.brasov`, plus ten
+unplanned activations and the exact excess EUR 2,800,000 deduction. This
+regression makes the previously silent side effect explicit and release-blocking.
+
+The first installed hover-gated retry safely skipped seven ineligible cities,
+but then aborted with zero transactions when OCR output containing the Unicode
+replacement character was relayed through a legacy Windows `charmap` console.
+FleetFill now configures both packaged worker streams as UTF-8 and renders
+diagnostic hover names with ASCII escapes. OCR normalization continues to strip
+the replacement character before allowlist matching. This preserves the
+fail-closed identity policy while allowing discovery to continue toward an
+eligible owned garage.
+
+The rebuilt installed package then completed a supervised two-garage queue.
+For the first sub-run, discovery hovered 12 candidates and clicked only the
+preflight-eligible `garage.galati`. For the second, it hovered 16 candidates;
+it clicked Galati once, rejected its now-full live slot state, then selected
+`garage.pitesti`. In total, only three marker clicks were needed across 28
+hovered candidates. All 20 guarded economic transactions passed, and the
+post-exit audit verified exactly Galati and Pitesti with no unplanned garage
+activation. This certifies both halves of the hybrid selection policy: copied
+save data removes known-ineligible candidates before clicking, while live slot
+recognition remains the final authority after an eligible marker is selected.
