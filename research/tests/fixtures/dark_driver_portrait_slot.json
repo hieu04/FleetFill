@@ -1,0 +1,14 @@
+{
+  "description": "Derived from the final hire of the first 0.2.1 dense-map retry; the visibly occupied fourth slot was classified as locked before the threshold correction.",
+  "run_id": "20260730-072256-031199-personal-beta",
+  "step": "189-driver-5-reselect-garage",
+  "garage": "Brasov",
+  "slot": 4,
+  "observed_state_before_fix": "locked",
+  "expected_state": "occupied",
+  "distance": 0.124,
+  "strongly_colored_pixels": 82,
+  "yellow_pixels": 0,
+  "source_capture": "direct-capture-20260730-073306-579534.png",
+  "source_capture_sha256": "375F61F335098F1C34B7554F984E6EF9ADF015C63614C90F2D5F6CB8805D1CDA"
+}

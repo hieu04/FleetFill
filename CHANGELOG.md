@@ -5,6 +5,42 @@ currently distributed as a personal-beta Windows application.
 
 ## Unreleased
 
+## 0.2.1 - 2026-07-30
+
+### Fixed
+
+- Dense garage-selection maps containing 31–60 valid garage icons no longer
+  abort before the first safe marker click. The bounded candidate guard now
+  allows 60 strictly shape-filtered icons instead of 30.
+- Added a regression manifest derived from the first 0.2.0 failure: 35 genuine
+  markers were detected with zero completed gameplay transactions.
+- Dark driver portraits are now recognized as occupied garage slots. This
+  prevents a final hire from stopping when a low-saturation portrait contains
+  fewer than the previous 200 strongly colored pixels.
+- Added a regression manifest from the 29-of-30 transaction boundary that
+  records the dark portrait's measured color and yellow-pixel counts.
+- Garage discovery now hovers over each candidate and uses Windows' built-in
+  offline OCR to identify its city before clicking. The city must resolve
+  uniquely to a completely empty, already-owned garage proven by preflight;
+  unknown, ambiguous, and unowned markers are skipped without a click.
+- Post-exit auditing now detects and reports garage status changes separately
+  from filled-garage slot changes, including unplanned status-0 activations.
+- Added a regression manifest from the first dense-map retry, where ten
+  unowned marker clicks silently bought ten garages and deducted an additional
+  EUR 2,800,000 despite the intended truck and driver assignments succeeding.
+- Packaged worker pipes now force UTF-8 with escaped-output fallback, preventing
+  localized OCR text or the Unicode replacement character from crashing garage
+  discovery before it reaches an eligible owned marker.
+
+### Verified
+
+- The rebuilt installed package completed a two-garage queue with all 20
+  guarded transactions and the post-exit audit passing. Discovery hovered 28
+  candidates but issued only three marker clicks: one selected `garage.galati`,
+  one rechecked that now-full garage during the second sub-run, and one selected
+  `garage.pitesti`. The audit verified exactly those two filled garages and no
+  unplanned garage activation.
+
 ## 0.2.0 - 2026-07-30
 
 ### Added

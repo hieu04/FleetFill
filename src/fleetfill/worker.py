@@ -17,7 +17,17 @@ import fleetfill.profile_safety  # noqa: F401
 import fleetfill.runtime  # noqa: F401
 
 
+def configure_utf8_stdio() -> None:
+    """Keep packaged worker pipelines safe for OCR and localized UI text."""
+
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8", errors="backslashreplace")
+
+
 def main(argv: list[str] | None = None) -> int:
+    configure_utf8_stdio()
     arguments = list(sys.argv[1:] if argv is None else argv)
     if not arguments:
         print("FleetFillWorker requires a Python script or '-m module'.", file=sys.stderr)
