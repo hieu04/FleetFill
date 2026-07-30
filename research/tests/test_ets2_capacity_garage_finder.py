@@ -40,7 +40,7 @@ class CapacityGarageFinderTests(unittest.TestCase):
         self.assertEqual(canonical_garage_name("Cluj-Napoca"), "clujnapoca")
         self.assertEqual(canonical_garage_name("København"), "kobenhavn")
 
-    def test_ocr_confusion_resolves_only_an_allowed_owned_garage(self):
+    def test_ocr_confusion_resolves_only_a_preflight_approved_garage(self):
         self.assertEqual(
             resolve_allowed_garage_id("la9i", ["garage.iasi", "garage.debrecen"]),
             "garage.iasi",
@@ -63,15 +63,18 @@ class CapacityGarageFinderTests(unittest.TestCase):
             resolve_allowed_garage_id("Riga", ["garage.luga", "garage.lodz"])
         )
 
-    def test_unowned_iasi_regression_is_rejected_before_click(self):
-        fixture = Path(__file__).parent / "fixtures" / "unowned_garage_activation.json"
+    def test_candidate_outside_preflight_allowlist_is_rejected_before_click(self):
+        fixture = (
+            Path(__file__).parent
+            / "fixtures"
+            / "outside_preflight_candidate.json"
+        )
         evidence = json.loads(fixture.read_text(encoding="utf-8"))
 
         self.assertEqual(evidence["preflight_status"], 0)
-        self.assertEqual(evidence["unplanned_garage_cost_eur"], 2_800_000)
         self.assertIsNone(
             resolve_allowed_garage_id(
-                evidence["rendered_city"], ["garage.debrecen", "garage.brasov"]
+                evidence["rendered_city"], evidence["approved_garage_ids"]
             )
         )
 

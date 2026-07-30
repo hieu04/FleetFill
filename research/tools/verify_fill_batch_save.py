@@ -231,7 +231,7 @@ def garage_arrays(units: list[tuple[str, str, str]]) -> dict[str, dict[str, obje
 
 
 def garage_changed(old_garage: dict[str, object], new_garage: dict[str, object]) -> bool:
-    """Detect slot occupancy changes and unplanned garage activation."""
+    """Detect slot occupancy and separate, causally neutral status changes."""
     return (
         old_garage.get("status") != new_garage.get("status")
         or garage_slot_shape_changed(old_garage, new_garage)

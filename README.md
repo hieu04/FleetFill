@@ -168,12 +168,13 @@ memory hook.
    abort the run.
 5. Garage and dealer markers are detected visually. Before a garage marker can
    be clicked, FleetFill hovers it and uses Windows' offline OCR to match the
-   tooltip city against the already-owned, empty garages proven by save
-   preflight. Unknown, ambiguous, and unowned markers fail closed. If several
-   fully visible dealer markers are available, FleetFill chooses the topmost
-   marker, then the leftmost one as a deterministic tie-breaker. When a useful
-   marker is not visible, the controller can pan the map and replay the measured
-   locator.
+   tooltip city against the already-owned, empty garages approved by save
+   preflight. Unknown, ambiguous, and outside-the-reviewed-set candidates fail
+   closed. This is a deterministic target-selection guard; the truck-delivery
+   dialog itself cannot purchase garages. If several fully visible dealer
+   markers are available, FleetFill chooses the topmost marker, then the
+   leftmost one as a deterministic tie-breaker. When a useful marker is not
+   visible, the controller can pan the map and replay the measured locator.
 6. Before a live batch, the controller copies the disposable profile's autosave
    and `profile.sii` into the local run evidence directory.
 7. Separate read-only save inspection tools can compare before/after saves to
