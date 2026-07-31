@@ -13,6 +13,9 @@ currently distributed as a personal-beta Windows application.
   of 1 observed across 1,680 saved neutral locked and truck-slot samples.
 - Added a regression manifest from the safe 16-of-30 transaction boundary,
   including the exact slot measurements and source-capture digest.
+- Simulator checkpoint writes now retry brief Windows file-sharing locks while
+  retaining atomic replacement and failing after a bounded 200-millisecond
+  window when a permission problem persists.
 
 ### Documentation
 

@@ -1074,3 +1074,14 @@ observed neutral maximum. The exact run, step, slot measurements, source-capture
 name, and SHA-256 digest are preserved in a regression fixture. Boundary tests
 also prove that 11 pixels remain rejected, 12 are accepted, neutral truck-slot
 noise is rejected, and yellow selected slots are not mistaken for portraits.
+
+The first v0.2.2 pull-request run also exposed a pre-existing Windows-only race
+in the no-input simulator test. The desktop supervisor can briefly hold the
+current checkpoint open while the simulator atomically replaces it, causing
+Windows to reject `Path.replace` with `WinError 5`. Stress testing reproduced
+the failure three times in 100 runs and captured the child-process traceback.
+The simulator now retries only `PermissionError` for a bounded 20 attempts at
+10-millisecond intervals. Other errors remain immediate, and a persistent
+permission failure is re-raised after the 200-millisecond window. Dedicated
+tests cover both transient recovery and bounded fail-closed behavior; the live
+ETS2 controller and its input path are unchanged.
