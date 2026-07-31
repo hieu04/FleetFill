@@ -5,6 +5,8 @@ currently distributed as a personal-beta Windows application.
 
 ## Unreleased
 
+## 0.2.2 - 2026-07-31
+
 ### Fixed
 
 - Very dark driver portraits are now recognized as occupied garage slots. The
