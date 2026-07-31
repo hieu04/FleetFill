@@ -95,7 +95,7 @@ def slot_distance(left: np.ndarray, right: np.ndarray) -> float:
     return float(np.mean(np.abs(left - right)))
 
 
-MIN_OCCUPIED_PORTRAIT_COLOR_PIXELS = 64
+MIN_OCCUPIED_PORTRAIT_COLOR_PIXELS = 12
 
 
 def is_occupied_portrait(strongly_colored_pixels: int, yellow_pixels: int) -> bool:

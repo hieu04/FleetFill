@@ -5,6 +5,15 @@ currently distributed as a personal-beta Windows application.
 
 ## Unreleased
 
+### Fixed
+
+- Very dark driver portraits are now recognized as occupied garage slots. The
+  evidence-backed portrait floor is 12 strongly colored pixels: below the 26
+  pixels measured in the Helsinki failure, while remaining above the maximum
+  of 1 observed across 1,680 saved neutral locked and truck-slot samples.
+- Added a regression manifest from the safe 16-of-30 transaction boundary,
+  including the exact slot measurements and source-capture digest.
+
 ### Documentation
 
 - Corrected the attribution of ten garage activations and an additional

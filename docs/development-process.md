@@ -1048,3 +1048,29 @@ post-exit audit verified exactly Galati and Pitesti with no concurrent garage
 status change. This certifies both halves of the hybrid selection policy: copied
 save data removes known-ineligible candidates before clicking, while live slot
 recognition remains the final authority after an eligible marker is selected.
+
+## 42. Hotfix very dark driver portraits
+
+The first subsequent three-garage run stopped safely during the second driver's
+garage reselect in Helsinki. Sixteen of 30 guarded economic actions had
+completed: the first garage was filled, the second garage had received five
+trucks, and its first driver had been hired. Before FleetFill could select a
+second driver slot, the live recognizer required one occupied portrait and four
+driverless trucks. It instead reported the occupied first slot as locked and
+aborted without clicking a slot or confirming another hire.
+
+The preserved step-110 capture shows a very dark-skinned male portrait in the
+first slot. Its slot region measured 26 strongly colored pixels, zero yellow
+pixels, and a template distance of 0.1069. The 0.2.1 portrait floor was 64, so
+the result was a deterministic false negative rather than a queue or garage
+selection failure. A survey of 1,680 saved slot observations found that genuine
+neutral locked and truck-only slots contained at most one strongly colored
+pixel; selected free slots remain independently rejected by the existing
+yellow-pixel ratio guard.
+
+Version 0.2.2 lowers the portrait floor from 64 to 12. This is below the failed
+portrait's measured 26 pixels while retaining a twelve-to-one margin over the
+observed neutral maximum. The exact run, step, slot measurements, source-capture
+name, and SHA-256 digest are preserved in a regression fixture. Boundary tests
+also prove that 11 pixels remain rejected, 12 are accepted, neutral truck-slot
+noise is rejected, and yellow selected slots are not mistaken for portraits.
