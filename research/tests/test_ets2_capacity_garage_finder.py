@@ -92,6 +92,29 @@ class CapacityGarageFinderTests(unittest.TestCase):
             )
         )
 
+    def test_very_dark_portrait_regression_is_still_occupied(self):
+        fixture = (
+            Path(__file__).parent
+            / "fixtures"
+            / "very_dark_driver_portrait_slot.json"
+        )
+        evidence = json.loads(fixture.read_text(encoding="utf-8"))
+
+        self.assertEqual(evidence["observed_state_before_fix"], "locked")
+        self.assertGreater(
+            evidence["strongly_colored_pixels"],
+            evidence["highest_observed_neutral_slot_colored_pixels"],
+        )
+        self.assertTrue(
+            is_occupied_portrait(
+                evidence["strongly_colored_pixels"], evidence["yellow_pixels"]
+            )
+        )
+
+    def test_portrait_floor_remains_above_neutral_slot_noise(self):
+        self.assertFalse(is_occupied_portrait(11, 0))
+        self.assertTrue(is_occupied_portrait(12, 0))
+
     def test_neutral_truck_slot_is_not_a_portrait(self):
         self.assertFalse(is_occupied_portrait(1, 0))
 

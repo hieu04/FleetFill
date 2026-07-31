@@ -1,0 +1,17 @@
+{
+  "description": "Derived from the second-driver garage reselect in the first post-0.2.1 three-garage run; a visibly occupied first slot with a very dark portrait was classified as locked before the threshold correction.",
+  "run_id": "20260731-153842-196466-personal-beta",
+  "step": "110-driver-2-reselect-garage",
+  "garage": "Helsinki",
+  "slot": 1,
+  "completed_guarded_actions": 16,
+  "planned_guarded_actions": 30,
+  "observed_state_before_fix": "locked",
+  "expected_state": "occupied",
+  "distance": 0.1069,
+  "strongly_colored_pixels": 26,
+  "yellow_pixels": 0,
+  "highest_observed_neutral_slot_colored_pixels": 1,
+  "source_capture": "direct-capture-20260731-154435-804550.png",
+  "source_capture_sha256": "66EA965119955E73E46B8762AC4C768265BABC4424EA020CC52C9D27559E670B"
+}

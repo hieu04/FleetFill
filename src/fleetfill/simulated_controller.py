@@ -9,6 +9,23 @@ from datetime import datetime
 from pathlib import Path
 
 
+REPORT_REPLACE_ATTEMPTS = 20
+REPORT_REPLACE_RETRY_DELAY_SECONDS = 0.01
+
+
+def _replace_report(temporary: Path, destination: Path) -> None:
+    """Tolerate brief Windows sharing locks while preserving atomic reports."""
+
+    for attempt in range(REPORT_REPLACE_ATTEMPTS):
+        try:
+            temporary.replace(destination)
+            return
+        except PermissionError:
+            if attempt + 1 == REPORT_REPLACE_ATTEMPTS:
+                raise
+            time.sleep(REPORT_REPLACE_RETRY_DELAY_SECONDS)
+
+
 def write_report(path: Path, status: str, completed: int, requested: int, error: str | None = None) -> None:
     payload = {
         "status": status,
@@ -20,7 +37,7 @@ def write_report(path: Path, status: str, completed: int, requested: int, error:
     }
     temporary = path.with_suffix(".json.tmp")
     temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    temporary.replace(path)
+    _replace_report(temporary, path)
 
 
 def cancellable_wait(seconds: float, cancel_file: Path) -> bool:
